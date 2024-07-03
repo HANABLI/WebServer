@@ -17,5 +17,6 @@ set_target_properties(${this} PROPERTIES
 
 target_link_libraries(${this} PUBLIC
     Http
+    HttpNetworkTransport
     SystemUtils
 )
