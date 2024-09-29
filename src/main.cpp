@@ -12,12 +12,20 @@
 #include <stdio.h>
 #include <string>
 #include <chrono>
+#include <memory>
 #include <SystemUtils/DiagnosticsStreamReporter.hpp>
 #include <Http/Server.hpp>
+#include <Json/Json.hpp>
+#include <SystemUtils/File.hpp>
 #include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
 
 namespace {
 
+    /**
+     * This is the default port number on whish to listen for
+     * connections from web client.
+     */
+    constexpr uint16_t DEFAULT_PORT = 8080;
     /**
      * This flag indicates whather or not the web server
      * should shut down.
@@ -39,6 +47,61 @@ void InterruptHandler(int sig) {
 }
 
 /**
+ * This function opens and reads the server's configuration file,
+ * returning it. The configuration is formatted as a JSON object.
+ * 
+ * @return
+ *      The server's configuration is returned as a JSON obejct.
+ */
+Json::Json ReadConfiguration() {
+    // Default configuration to be used when there are any issues
+    // reading the actual configuration file.
+    Json::Json configuration(Json::Json::Type::Object);
+    configuration.Set("port", DEFAULT_PORT);
+    // Open the configuration file.
+    const auto configFile = std::shared_ptr< FILE >( fopen(
+            (SystemUtils::File::GetExeParentDirectory() + "/config.json").c_str(),
+            "rb"
+        ),
+        [](FILE* f){
+            if (f != NULL) {
+                (void)fclose(f);
+            }
+        }
+    );
+
+    if (configFile == NULL) {
+        return configuration;
+    } 
+    // Determine the size of the configuration file.
+    if(fseek(configFile.get(), 0, SEEK_END) != 0) {
+        fprintf(stderr, "error: unable to  seek to the ned of the configuration file\n");
+        return configuration;
+    }
+    const auto configSize = ftell(configFile.get());
+    if (configSize == EOF) {
+        fprintf(stderr, "error: unable to determine end of configuration file\n");
+        return configuration;
+    }
+
+    if(fseek(configFile.get(), 0, SEEK_SET) != 0) {
+        fprintf(stderr, "error: unable to seek to the beginning of the configuration file\n");
+        return configuration; 
+    }
+
+    // Read the configuration file into memory.
+    std::vector< char > encodedConfig(configSize);
+    if (fread(encodedConfig.data(), encodedConfig.size(), 1, configFile.get()) != 1) {
+        fprintf(stderr, "error: unable to read the configuration file\n");
+        return configuration;
+    }
+
+    // Decode the configuration file.
+    configuration = Json::Json::FromEncoding(encodedConfig.data());
+    return configuration;
+}
+
+/**
  * This function is the entrypoint for the program.
  * It sts up the web server and then waits for the SIGINT
  * signal to shut down and terminate the program.
@@ -51,7 +114,7 @@ void InterruptHandler(int sig) {
  */
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
-    _crtBreakAlloc = 1708;
+    //_crtBreakAlloc = 1708;
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif /* _WIN32 */
     auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
@@ -59,7 +122,15 @@ int main(int argc, char* argv[]) {
         const auto diagnosticsSubscription = server.SubscribeToDiagnostics(
         SystemUtils::DiagnosticsStreamReporter(stdout, stderr)
     );
-    if (!server.Mobilize(transport, 8080)) {
+    const auto configuration = ReadConfiguration();
+    uint16_t port = 0;
+    if (configuration.Has("port")) {
+        port = (int)*configuration["port"];
+    } 
+    if (port == 0) {
+        port = DEFAULT_PORT;
+    }
+    if (!server.Mobilize(transport, port)) {
         return EXIT_FAILURE;
     }
     auto testLeak = new char[80];
