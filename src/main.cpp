@@ -101,6 +101,38 @@ Json::Json ReadConfiguration() {
     return configuration;
 }
 
+
+/**
+ * This function assembles the configuration of the server, and uses it 
+ * to start server with the given transport layer.
+ * 
+ * @param[in,out] server
+ *      This is the server to configure and start.
+ * 
+ * @param[in] transport
+ *      This is the transport layer to give to the server for interfacing
+ *      with the network.
+ * @return
+ *      An indication of whether or not the function succeeded is returned.
+ */
+bool ConfigureAndStartServer(
+    Http::Server& server,
+    std::shared_ptr< Http::ServerTransportLayer > transport
+) {
+    const auto configuration = ReadConfiguration();
+    uint16_t port = 0;
+    if (configuration.Has("port")) {
+        port = (int)*configuration["port"];
+    } 
+    if (port == 0) {
+        port = DEFAULT_PORT;
+    }
+    if (!server.Mobilize(transport, port)) {
+        return false;
+    }
+    return true;
+}
+
 /**
  * This function is the entrypoint for the program.
  * It sts up the web server and then waits for the SIGINT
@@ -118,23 +150,15 @@ int main(int argc, char* argv[]) {
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif /* _WIN32 */
     auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
+    const auto previousInterruptHandler = signal(SIGINT, InterruptHandler);
     Http::Server server;
         const auto diagnosticsSubscription = server.SubscribeToDiagnostics(
         SystemUtils::DiagnosticsStreamReporter(stdout, stderr)
     );
-    const auto configuration = ReadConfiguration();
-    uint16_t port = 0;
-    if (configuration.Has("port")) {
-        port = (int)*configuration["port"];
-    } 
-    if (port == 0) {
-        port = DEFAULT_PORT;
-    }
-    if (!server.Mobilize(transport, port)) {
+    if (!ConfigureAndStartServer(server, transport)) {
         return EXIT_FAILURE;
     }
     auto testLeak = new char[80];
-    const auto previousInterruptHandler = signal(SIGINT, InterruptHandler);
     printf("Web server starting up.\n");
     while (!shutDown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
