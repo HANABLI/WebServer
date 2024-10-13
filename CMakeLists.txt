@@ -20,4 +20,7 @@ target_link_libraries(${this} PUBLIC
     Http
     HttpNetworkTransport
     SystemUtils
+    StringUtils
 )
+
+add_subdirectory(StaticContentPlugin)
