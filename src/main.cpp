@@ -141,10 +141,137 @@ namespace {
          */
         void Unload() {
             if (unloadDelegate != nullptr) {
-                unloadDelegate();
+                return;
             }
+            unloadDelegate();
             unloadDelegate = nullptr;
             pluginRuntimeLibrary.Unload();
+        }
+
+        /**
+         * This method cleanly load the plug-in, following the procedure
+         * bellow.
+         * 1.  Make a copy from the plugins-image folder to the plugins-run
+         *     time folder
+         * 2.  Link the plug-in code
+         * 3.  Locate the plugin entrypoint function "LoadPlugin".
+         * 4.  Call the entrypoint function, providing the plug-in with access
+         *     to the server. Then the plugin will return a function that the
+         *     server can call later to unload the plugin.
+         * @note 
+         *     The plugin can signal a "failure to load" or other
+         *     kind of fatal error simply by leaving the "unload"
+         *     delegate as a nullptr
+         * 
+         * @param[in] server
+         *      This is the server for which to load the plugin
+         * 
+         * @param[in] pluginsRunTimePath
+         *      This is the path to where a copy of the plugin is made
+         *      in order to link the code without locking the original
+         *      code image . So that the original code image can be updated
+         *      even while the plugins is loaded.
+         * 
+         * @param[in] diagnosticMessageDelegate
+         *      This is the function delegate to call to publish any diagnostic message.
+         *      
+         */
+        void Load(
+            Http::Server& server, 
+            const std::string& pluginsRunTimePath, 
+            SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
+        ) {
+            if (
+                pluginImageFile.Copy(pluginRuntimeFile.GetPath())
+            ) {
+                if (pluginRuntimeLibrary.Load(
+                        pluginsRunTimePath,
+                        moduleName
+                    )
+                ) {
+                    const auto loadPlugin = (
+                        void(*)(
+                            Http::Server& server,
+                            Json::Json configuration,
+                            SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
+                            std::function< void() >& unloadDelegate
+                        )
+                    )pluginRuntimeLibrary.GetProcedure("LoadPlugin");
+                    if (loadPlugin != nullptr) {
+                        loadPlugin(
+                            server, 
+                            *configuration,
+                            [this, diagnosticMessageDelegate](
+                                std::string senderName,
+                                size_t level,
+                                std::string message
+                            ){
+                                if (senderName.empty()) {
+                                    diagnosticMessageDelegate(
+                                        this->moduleName,
+                                        level,
+                                        message
+                                    );
+                                } else {
+                                    diagnosticMessageDelegate(
+                                        StringUtils::sprintf(
+                                            "%s%s",
+                                            this->moduleName.c_str(),
+                                            senderName.c_str()
+                                        ),
+                                        level,
+                                        message
+                                    );
+                                }
+                            },
+                            unloadDelegate
+                        );
+                        if (unloadDelegate == nullptr) {
+                            diagnosticMessageDelegate(
+                                "",
+                                SystemUtils::DiagnosticsSender::Levels::WARNING,
+                                StringUtils::sprintf(
+                                    "unable to find plugin '%s' entrypoint",
+                                    this->moduleName.c_str()
+                                )
+                            );
+                        }
+                    } else {
+                        diagnosticMessageDelegate(
+                            "",
+                            SystemUtils::DiagnosticsSender::Levels::WARNING,
+                            StringUtils::sprintf(
+                                "unable to find plugin '%s' entrypoint",
+                                this->moduleName.c_str()
+                            )
+                        );
+                    }
+                    if (unloadDelegate == nullptr) {
+                        pluginRuntimeLibrary.Unload();
+                    }
+                } else {
+                    diagnosticMessageDelegate(
+                        "",
+                        SystemUtils::DiagnosticsSender::Levels::WARNING,
+                        StringUtils::sprintf(
+                            "unable to link plugin '%s' library",
+                            this->moduleName.c_str()
+                        )
+                    );
+                }
+                if (unloadDelegate == nullptr) {
+                    pluginRuntimeFile.Destroy();
+                }
+            } else {
+                diagnosticMessageDelegate(
+                    "",
+                    SystemUtils::DiagnosticsSender::Levels::WARNING,
+                    StringUtils::sprintf(
+                        "unable to find plugin '%s' entrypoint",
+                        this->moduleName.c_str()
+                    )
+                );
+            }
         }
     };
     
@@ -393,98 +520,7 @@ void MonitorServer(
             if ( (plugin.second->unloadDelegate == nullptr) 
                 && plugin.second->pluginImageFile.IsExisting()
             ) {
-                if (
-                    plugin.second->pluginImageFile.Copy(plugin.second->pluginRuntimeFile.GetPath())
-                ) {
-                    if (plugin.second->pluginRuntimeLibrary.Load(
-                            pluginsRunTimePath,
-                            plugin.second->moduleName
-                        )
-                    ) {
-                        const auto loadPlugin = (
-                            void(*)(
-                                Http::Server& server,
-                                Json::Json configuration,
-                                SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
-                                std::function< void() >& unloadDelegate
-                            )
-                        )plugin.second->pluginRuntimeLibrary.GetProcedure("LoadPlugin");
-                        if (loadPlugin != nullptr) {
-                            const std::string pluginName = plugin.first;
-                            loadPlugin(
-                                server, 
-                                *plugin.second->configuration,
-                                [diagnosticMessageDelegate, pluginName](
-                                    std::string senderName,
-                                    size_t level,
-                                    std::string message
-                                ){
-                                    if (senderName.empty()) {
-                                        diagnosticMessageDelegate(
-                                            pluginName,
-                                            level,
-                                            message
-                                        );
-                                    } else {
-                                        diagnosticMessageDelegate(
-                                            StringUtils::sprintf(
-                                                "%s%s",
-                                                pluginName.c_str(),
-                                                senderName.c_str()
-                                            ),
-                                            level,
-                                            message
-                                        );
-                                    }
-                                },
-                                plugin.second->unloadDelegate
-                            );
-                            if (plugin.second->unloadDelegate == nullptr) {
-                                diagnosticMessageDelegate(
-                                    "",
-                                    SystemUtils::DiagnosticsSender::Levels::WARNING,
-                                    StringUtils::sprintf(
-                                        "unable to find plugin '%s' entrypoint",
-                                        plugin.first.c_str()
-                                    )
-                                );
-                            }
-                        } else {
-                            diagnosticMessageDelegate(
-                                "",
-                                SystemUtils::DiagnosticsSender::Levels::WARNING,
-                                StringUtils::sprintf(
-                                    "unable to find plugin '%s' entrypoint",
-                                    plugin.first.c_str()
-                                )
-                            );
-                        }
-                        if (plugin.second->unloadDelegate == nullptr) {
-                            plugin.second->pluginRuntimeLibrary.Unload();
-                        }
-                    } else {
-                        diagnosticMessageDelegate(
-                            "",
-                            SystemUtils::DiagnosticsSender::Levels::WARNING,
-                            StringUtils::sprintf(
-                                "unable to link plugin '%s' library",
-                                plugin.first.c_str()
-                            )
-                        );
-                    }
-                    if (plugin.second->unloadDelegate == nullptr) {
-                        plugin.second->pluginRuntimeFile.Destroy();
-                    }
-                } else {
-                    diagnosticMessageDelegate(
-                        "",
-                        SystemUtils::DiagnosticsSender::Levels::WARNING,
-                        StringUtils::sprintf(
-                            "unable to find plugin '%s' entrypoint",
-                            plugin.first.c_str()
-                        )
-                    );
-                }
+                plugin.second->Load(server, pluginsRunTimePath, diagnosticMessageDelegate);
             } else {
                 diagnosticMessageDelegate(
                     "",
