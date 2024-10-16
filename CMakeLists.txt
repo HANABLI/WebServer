@@ -8,6 +8,10 @@ set(this WebServer)
 
 set(Sources 
     src/main.cpp
+    src/Plugin.hpp
+    src/Plugin.cpp
+    src/PluginLoader.hpp
+    src/PluginLoader.cpp
 )
 
 add_executable(${this} ${Sources})

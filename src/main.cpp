@@ -23,6 +23,7 @@
 #include <SystemUtils/DynamicLibrary.hpp>
 #include <Http/Server.hpp>
 #include <Json/Json.hpp>
+#include "PluginLoader.hpp"
 #include <SystemUtils/File.hpp>
 #include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
 
@@ -65,229 +66,7 @@ namespace {
         std::string runtimePluginPath = SystemUtils::File::GetExeParentDirectory() + "/runtime";
 
     };
-
-    /**
-     * This is the information tracked for each plug-in
-     */
-    struct Plugin {
-        // Properties
-
-        /**
-         * This is the time that the plug-in image was last modified.
-         */
-        time_t lastModifiedTime = 0;
-
-        /**
-         * This is the plug-in image file.
-         */
-        SystemUtils::File pluginImageFile;
-
-        /**
-         * This is the plug-in runtime file.
-         */
-        SystemUtils::File pluginRuntimeFile;
-
-        /**
-         * This is the path to the plug-in runtime file,
-         * without the file extension (if any)
-         */
-        std::string moduleName;
-
-        /**
-         * This is the configuration object to give to the plugin when
-         * it's loaded.
-         */
-        std::shared_ptr< Json::Json > configuration;
-
-        /**
-         * This is used to dynamically link with the run-time copy
-         * of the plug-in image.
-         */
-        SystemUtils::DynamicLibrary pluginRuntimeLibrary;
-
-        /**
-         * If the plug-in is currently loaded, this is the function to 
-         * call in order to unload it.
-         */
-        std::function< void() > unloadDelegate;
-
-        // Methods
-
-        /**
-         * This is the constructor for the structure.
-         * 
-         * @param[in] imageFileName
-         *      This is the plug-in image file name.
-         * 
-         * @param[in] runtimeFileName
-         *      This is the plug in runtime file name.
-         */
-        Plugin(const std::string& imageFileName, const std::string& runtimeFileName) : 
-            pluginImageFile(imageFileName),
-            pluginRuntimeFile(runtimeFileName) 
-        {
-        };
-
-        /**
-         * This method is used to cleanly unload the plug-in
-         * folowing this eneral procedure:
-         * 1. Call the "unload" delegate provided by the plug-in
-         *    Typecally this delegate will turn around and revoke
-         *    its registration with the web server.
-         * 2. Release the unload delegate (by assigning nullptr
-         *    to the variable holding onto it. Typecally this 
-         *    will cause any state captured in the unload delegate
-         *    to be destroyed/freed. After this it will be safe to
-         *    unlink plug-in code).
-         * 3. Unlik the plug-in code.
-         */
-        void Unload(SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate) {
-            diagnosticMessageDelegate("", 0, StringUtils::sprintf("Unloading '%s' plugin", moduleName.c_str()));
-            if (unloadDelegate == nullptr) {
-                return;
-            }
-            unloadDelegate();
-            unloadDelegate = nullptr;
-            pluginRuntimeLibrary.Unload();
-            diagnosticMessageDelegate("", 0, StringUtils::sprintf("Plugin '%s' unloaded", moduleName.c_str()));
-                    
-        }
-
-        /**
-         * This method cleanly load the plug-in, following the procedure
-         * bellow.
-         * 1.  Make a copy from the plugins-image folder to the plugins-run
-         *     time folder
-         * 2.  Link the plug-in code
-         * 3.  Locate the plugin entrypoint function "LoadPlugin".
-         * 4.  Call the entrypoint function, providing the plug-in with access
-         *     to the server. Then the plugin will return a function that the
-         *     server can call later to unload the plugin.
-         * @note 
-         *     The plugin can signal a "failure to load" or other
-         *     kind of fatal error simply by leaving the "unload"
-         *     delegate as a nullptr
-         * 
-         * @param[in] server
-         *      This is the server for which to load the plugin
-         * 
-         * @param[in] pluginsRunTimePath
-         *      This is the path to where a copy of the plugin is made
-         *      in order to link the code without locking the original
-         *      code image . So that the original code image can be updated
-         *      even while the plugins is loaded.
-         * 
-         * @param[in] diagnosticMessageDelegate
-         *      This is the function delegate to call to publish any diagnostic message.
-         *      
-         */
-        void Load(
-            Http::Server& server, 
-            const std::string& pluginsRunTimePath, 
-            SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
-        ) {
-            diagnosticMessageDelegate("", 0, StringUtils::sprintf("Copying plugin '%s'", moduleName.c_str()));
-            if (
-                pluginImageFile.Copy(pluginRuntimeFile.GetPath())
-            ) {
-                diagnosticMessageDelegate("", 0, StringUtils::sprintf("Linking plugin '%s'", moduleName.c_str()));
-                if (pluginRuntimeLibrary.Load(
-                        pluginsRunTimePath,
-                        moduleName
-                    )
-                ) {
-                    diagnosticMessageDelegate("", 0, StringUtils::sprintf("Looking for plugin '%s' entrypoint", moduleName.c_str()));
-                    const auto loadPlugin = (
-                        void(*)(
-                            Http::Server& server,
-                            Json::Json configuration,
-                            SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
-                            std::function< void() >& unloadDelegate
-                        )
-                    )pluginRuntimeLibrary.GetProcedure("LoadPlugin");
-                    if (loadPlugin != nullptr) {
-                        diagnosticMessageDelegate("", 0, StringUtils::sprintf("Loading plugin entrypoint", moduleName.c_str()));
-                        loadPlugin(
-                            server, 
-                            *configuration,
-                            [this, diagnosticMessageDelegate](
-                                std::string senderName,
-                                size_t level,
-                                std::string message
-                            ){
-                                if (senderName.empty()) {
-                                    diagnosticMessageDelegate(
-                                        this->moduleName,
-                                        level,
-                                        message
-                                    );
-                                } else {
-                                    diagnosticMessageDelegate(
-                                        StringUtils::sprintf(
-                                            "%s%s",
-                                            this->moduleName.c_str(),
-                                            senderName.c_str()
-                                        ),
-                                        level,
-                                        message
-                                    );
-                                }
-                            },
-                            unloadDelegate
-                        );
-                        if (unloadDelegate == nullptr) {
-                            diagnosticMessageDelegate(
-                                "",
-                                SystemUtils::DiagnosticsSender::Levels::WARNING,
-                                StringUtils::sprintf(
-                                    "unable to find plugin '%s' entrypoint",
-                                    this->moduleName.c_str()
-                                )
-                            );
-                        } else {
-                            diagnosticMessageDelegate("", 1, StringUtils::sprintf("Plugin '%s' Loaded", moduleName.c_str()));
-                        }
-                    } else {
-                        diagnosticMessageDelegate(
-                            "",
-                            SystemUtils::DiagnosticsSender::Levels::WARNING,
-                            StringUtils::sprintf(
-                                "unable to find plugin '%s' entrypoint",
-                                this->moduleName.c_str()
-                            )
-                        );
-                    }
-                    if (unloadDelegate == nullptr) {
-                        pluginRuntimeLibrary.Unload();
-                    }
-                } else {
-                    diagnosticMessageDelegate(
-                        "",
-                        SystemUtils::DiagnosticsSender::Levels::WARNING,
-                        StringUtils::sprintf(
-                            "unable to link plugin '%s' library",
-                            this->moduleName.c_str()
-                        )
-                    );
-                }
-                if (unloadDelegate == nullptr) {
-                    pluginRuntimeFile.Destroy();
-                }
-            } else {
-                diagnosticMessageDelegate(
-                    "",
-                    SystemUtils::DiagnosticsSender::Levels::WARNING,
-                    StringUtils::sprintf(
-                        "unable to find plugin '%s' entrypoint",
-                        this->moduleName.c_str()
-                    )
-                );
-            }
-        }
-    };
-    
 }
-
 
 /**
  * This function updates the program environement to incorporate
@@ -341,96 +120,6 @@ bool ProcessCommandLineArguments(
     }
     return true;
 }
-
-struct PluginLoader
-{
-    /**
-     * This is the plug-in loader worker thread.
-     */
-    std::thread worker;
-    /** 
-     * This is the function to call if the scan flag is set
-     */
-    std::function < void() > scanDelegate;
-    /** 
-     * This is used to wait for either the scan or stop flag to be set.
-     */
-    std::condition_variable& pluginLoaderWakeCondition;
-    /** 
-     * This is used to synchronize access to the scan and stop flags.
-     */
-    std::mutex& pluginLoaderMutex;
-    /** 
-     * 
-     * This flag is set to signal when the scanDelegate should
-     * be called. this function clears the flag. 
-     */
-    bool& pluginLoaderScan;
-    /**  
-     * This flag is set to signal when the thread should exit.
-     */
-    bool& pluginLoaderStop;
-    /**
-     * Message Delegate
-     */
-    SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate;
-    
-    // Methods
-
-    PluginLoader(
-        std::function < void() > scanDelegate,
-        std::condition_variable& pluginLoaderWakeCondition,
-        std::mutex& pluginLoaderMutex,
-        bool& pluginLoaderScan,
-        bool& pluginLoaderStop,
-        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
-    ) 
-        : scanDelegate(scanDelegate)
-        , pluginLoaderWakeCondition(pluginLoaderWakeCondition)
-        , pluginLoaderMutex(pluginLoaderMutex)
-        , pluginLoaderScan(pluginLoaderScan)
-        , pluginLoaderStop(pluginLoaderStop)
-        , diagnosticMessageDelegate(diagnosticMessageDelegate)
-    {}
-    /**
-     * This function is called in its own worker thread. It will call
-     * the given scanDelegate whenever the given scan flag remains clear
-     * after a short wait period after being set.
-     * 
-     */
-    void launch() {
-        std::unique_lock< std::mutex > lock(pluginLoaderMutex);
-        diagnosticMessageDelegate("PluginLoader", 0, "starting");
-        while (!pluginLoaderStop) {
-            diagnosticMessageDelegate("PluginLoader", 0, "sleeping");
-            (void)pluginLoaderWakeCondition.wait(
-                lock,
-                [this] { return pluginLoaderScan || pluginLoaderStop; }
-            );
-            diagnosticMessageDelegate("PluginLoader", 0, "Waking");
-            if (pluginLoaderStop) {
-                break;
-            }
-            if (pluginLoaderScan) {
-                diagnosticMessageDelegate("PluginLoader", 0, "need to scan ... waiting");
-                pluginLoaderScan = false;
-                if (
-                     pluginLoaderWakeCondition.wait_for(
-                        lock,
-                        std::chrono::microseconds(100),
-                        [this]{ return pluginLoaderScan || pluginLoaderStop; }
-                    )
-                ) {
-                    diagnosticMessageDelegate("PluginLoader", 0, "Need to scan ... still updating; backing off");
-                } else {
-                    diagnosticMessageDelegate("PluginLoader", 0, "Scanning");
-                    scanDelegate();
-                }
-            }
-        }
-         diagnosticMessageDelegate("PluginLoader", 0, "stopping");
-    }
-};
 
 /**
  * This function is set up to ba called whene the SIGINT signal is
@@ -582,7 +271,6 @@ void MonitorServer(
     const Environment& environment,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
 ) {
-    SystemUtils::DirectoryMonitor directroyMonitor;
     std::string pluginsImagePath = environment.pluginsImagePath;
     if (configuration.Has("plugins-image")) {
         pluginsImagePath = *configuration["plugins-image"]; 
@@ -591,7 +279,7 @@ void MonitorServer(
     if (configuration.Has("plugins-runtime")) {
         pluginsRunTimePath = *configuration["plugins-runtime"];
     }
-    std::map< std::string, std::shared_ptr< Plugin> > plugins;
+    std::map< std::string, std::shared_ptr< Plugin > > plugins;
     const auto pluginsEntries = configuration["plugins"];
     const auto pluginsEnabled = configuration["plugins-enabled"];
     std::string moduleExtension;
@@ -607,79 +295,28 @@ void MonitorServer(
         if (pluginsEntries->Has(pluginName)) {
             const auto pluginEntry = (*pluginsEntries)[pluginName];
             const std::string pluginModule = *(*pluginEntry)["module"];
-            const auto plugin = plugins[pluginName] = std::make_shared< Plugin>(
+            auto plugin = plugins[pluginName] = std::make_shared< Plugin >(
                 pluginsImagePath + "/" + pluginModule + moduleExtension,
                 pluginsRunTimePath + "/" + pluginModule + moduleExtension
             );
-            plugin->moduleName = pluginModule;
+            plugin->moduleName = pluginModule ;
             plugin->lastModifiedTime = plugin->pluginImageFile.GetLastModifiedTime();
             plugin->configuration = (*pluginEntry)["configuration"];
         }
     }
-    const auto pluginScanDelegate = [
-        &server, 
-        &plugins, 
-        configuration, 
-        diagnosticMessageDelegate, 
-        pluginsImagePath, 
-        pluginsRunTimePath
-    ]{
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
-        for (auto& plugin: plugins) {
-            if ( (plugin.second->unloadDelegate == nullptr) 
-                && plugin.second->pluginImageFile.IsExisting()
-            ) {
-                plugin.second->Load(server, pluginsRunTimePath, diagnosticMessageDelegate);
-            } else {
-                diagnosticMessageDelegate(
-                    "",
-                    SystemUtils::DiagnosticsSender::Levels::WARNING,
-                    StringUtils::sprintf(
-                        "unable to find plugin image '%s' file",
-                        plugin.first.c_str()
-                    )
-                );
-            }
-        }
-    };
-    pluginScanDelegate();
-    std::condition_variable pluginLoaderWakeCondition;
-    std::mutex pluginLoaderMutex;
-    bool pluginLoaderStop = false;
-    bool pluginLoaderScan = false;
     PluginLoader pluginLoader(
-        pluginScanDelegate,
-        pluginLoaderWakeCondition,
-        pluginLoaderMutex,
-        pluginLoaderScan,
-        pluginLoaderStop,
+        server,
+        pluginsRunTimePath,
+        pluginsImagePath,
+        plugins,
         diagnosticMessageDelegate
     );
-    pluginLoader.worker = std::thread(&PluginLoader::launch, &pluginLoader);
-    const auto imagePathChangedDelegate = [
-        &pluginLoaderWakeCondition,
-        &pluginLoaderMutex,
-        &pluginLoaderScan
-    ]{
-        std::lock_guard< decltype(pluginLoaderMutex) > lock(pluginLoaderMutex);
-        pluginLoaderScan = true;
-        pluginLoaderWakeCondition.notify_all();
-    };
-    if (
-        !directroyMonitor.Start(imagePathChangedDelegate, pluginsImagePath)    
-    ) {
-        fprintf(stderr, "warning: unable to monitor plug-ins image directory (%s)\n", pluginsImagePath.c_str());
-    }
+    pluginLoader.Scan();
+    pluginLoader.StartScanning();
     while (!shutDown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
-    directroyMonitor.Stop();
-    {
-        std::lock_guard< decltype(pluginLoaderMutex) > lock(pluginLoaderMutex);
-        pluginLoaderStop = true;
-        pluginLoaderWakeCondition.notify_all();
-    }
-    pluginLoader.worker.join();
+    pluginLoader.StopScanning();
     for (auto& plugin: plugins) {
         plugin.second->Unload(diagnosticMessageDelegate);
     }
