@@ -9,6 +9,7 @@
 #include <memory>
 #include <functional>
 #include <StringUtils/StringUtils.hpp>
+#include <WebServer/PluginEntryPoint.hpp>
 #include <Http/Server.hpp>
 #include <Json/Json.hpp>
 
@@ -18,6 +19,24 @@
 #define API
 #endif /* _WIN32 / POSIX */
 
+/**
+ * This is the type expected for the entry point function
+ * for all server plug-ins
+ * 
+ * @param[in, out] server
+ *      This is the server to which to add the plugin.
+ * 
+ * @param[in] configuration
+ *      This holds the configuration items of the plugin.
+ * 
+ * @param[in] diagnosticMessageDelegate
+ *      This is the function to call to delliver à diagnostic message.
+ * 
+ * @param[in, out] unloadDelegate
+ *      This is the funcntion to call in order to unloade the plugin.
+ *      if this is set to nullptr on return, it means the plug-in was 
+ *      unable to load successfully. 
+ */
 extern "C" API void LoadPlugin(
     Http::Server& server,
     Json::Json configuration,
@@ -62,3 +81,13 @@ extern "C" API void LoadPlugin(
         unregistrationDelegate();
     };
 }
+
+
+/**
+ * This checks to make sure the plug-in entry point signature
+ * matches the entry point type declared in the web server API.
+ */
+namespace 
+{
+    PluginEntryPoint EntryPoint = &LoadPlugin;
+} // namespace 

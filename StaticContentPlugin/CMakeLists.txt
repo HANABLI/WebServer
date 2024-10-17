@@ -14,6 +14,8 @@ set_target_properties(${This} PROPERTIES
     FOLDER "web Server Plugins"
 )
 
+target_include_directories(${This} PRIVATE $<TARGET_PROPERTY:WebServer,INCLUDE_DIRECTORIES>)
+
 target_link_libraries(${This} PUBLIC
     Uri
     Http
