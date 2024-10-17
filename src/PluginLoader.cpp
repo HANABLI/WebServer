@@ -80,10 +80,36 @@
          */
         void Scan() {
             for (auto& plugin: plugins) {
-                if ( (plugin.second->unloadDelegate == nullptr) 
-                    && plugin.second->pluginImageFile.IsExisting()
-                ) {
-                    plugin.second->Load(server, pluginsRunTimePath, diagnosticMessageDelegate);
+                if(!plugin.second->pluginImageFile.IsExisting()) {
+                    continue;
+                }
+                if(plugin.second->unloadDelegate == nullptr) {
+                    continue;
+                }
+                if (!plugin.second->needsToLoad) {
+                    const auto lastModificationTime = plugin.second->pluginImageFile.GetLastModifiedTime();
+                    if (plugin.second->lastModifiedTime != lastModificationTime) {  
+                        diagnosticMessageDelegate("PluginLoader", 0, StringUtils::sprintf("plugin '%s' appears to have changed", plugin.first.c_str()));
+                        plugin.second->needsToLoad = true;
+                        plugin.second->lastModifiedTime = lastModificationTime;
+                    }
+                }
+                
+                if ( plugin.second->needsToLoad ) {
+                    plugin.second->Load(server, plugin.second->needsToLoad,  pluginsRunTimePath, diagnosticMessageDelegate);
+                    if (
+                        (plugin.second->unloadDelegate == nullptr)
+                        && plugin.second->needsToLoad
+                    ) {
+                        diagnosticMessageDelegate(
+                            "PluginLoader",
+                            SystemUtils::DiagnosticsSender::Levels::WARNING,
+                            StringUtils::sprintf(
+                                "plugin '%s' failed to copy... will attempt to copy and reload soon", plugin.first.c_str() 
+                            )
+                        );
+                        pluginLoaderScan = true;
+                    }
                 } else {
                     diagnosticMessageDelegate(
                         "",

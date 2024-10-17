@@ -23,7 +23,11 @@ struct Plugin {
      * This is the time that the plug-in image was last modified.
      */
     time_t lastModifiedTime = 0;
-
+    /**
+     * This flag indicates whether or not the plug-in should
+     * be loaded or reloaded.
+     */
+    bool needsToLoad = false;
     /**
      * This is the plug-in image file.
      */
@@ -103,6 +107,7 @@ struct Plugin {
      */
     void Plugin::Load(
         Http::Server& server, 
+        bool needsToLoad,
         const std::string& pluginsRunTimePath, 
         SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
     );

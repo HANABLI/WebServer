@@ -1,6 +1,7 @@
 #include "Plugin.hpp"
 #include <Http/Server.hpp>
 #include <Json/Json.hpp>
+#include <WebServer/PluginEntryPoint.hpp>
 #include <StringUtils/StringUtils.hpp>
 #include <SystemUtils/DynamicLibrary.hpp>
 #include <SystemUtils/DiagnosticsSender.hpp>
@@ -62,8 +63,9 @@ void Plugin::Unload(SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate di
  *      
  */
 void Plugin::Load(
-    Http::Server& server, 
-    const std::string& pluginsRunTimePath, 
+    Http::Server& server,
+    bool needsToLoad,
+    const std::string& pluginsRunTimePath,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
 ) {
     diagnosticMessageDelegate("", 0, StringUtils::sprintf("Copying plugin '%s'", moduleName.c_str()));
@@ -78,12 +80,7 @@ void Plugin::Load(
         ) {
             diagnosticMessageDelegate("", 0, StringUtils::sprintf("Looking for plugin '%s' entrypoint", moduleName.c_str()));
             const auto loadPlugin = (
-                void(*)(
-                    Http::Server& server,
-                    Json::Json configuration,
-                    SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
-                    std::function< void() >& unloadDelegate
-                )
+                PluginEntryPoint
             )pluginRuntimeLibrary.GetProcedure("LoadPlugin");
             if (loadPlugin != nullptr) {
                 diagnosticMessageDelegate("", 0, StringUtils::sprintf("Loading plugin entrypoint", moduleName.c_str()));
@@ -124,6 +121,7 @@ void Plugin::Load(
                             moduleName.c_str()
                         )
                     );
+                    needsToLoad = false;
                 } else {
                     diagnosticMessageDelegate("", 1, StringUtils::sprintf("Plugin '%s' Loaded", moduleName.c_str()));
                 }
@@ -136,6 +134,7 @@ void Plugin::Load(
                         moduleName.c_str()
                     )
                 );
+                needsToLoad = false;
             }
             if (unloadDelegate == nullptr) {
                 pluginRuntimeLibrary.Unload();
@@ -149,6 +148,7 @@ void Plugin::Load(
                     moduleName.c_str()
                 )
             );
+            needsToLoad = false;
         }
         if (unloadDelegate == nullptr) {
             pluginRuntimeFile.Destroy();
@@ -162,6 +162,7 @@ void Plugin::Load(
                 moduleName.c_str()
             )
         );
+        needsToLoad = false;
     }
 }
 
