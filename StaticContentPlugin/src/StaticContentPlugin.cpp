@@ -10,7 +10,7 @@
 #include <functional>
 #include <StringUtils/StringUtils.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
-#include <Http/Server.hpp>
+#include <Http/IServer.hpp>
 #include <Json/Json.hpp>
 
 #ifdef _WIN32
@@ -38,7 +38,7 @@
  *      unable to load successfully. 
  */
 extern "C" API void LoadPlugin(
-    Http::Server& server,
+    Http::IServer* server,
     Json::Json configuration,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
@@ -62,10 +62,10 @@ extern "C" API void LoadPlugin(
     }
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
-    const auto unregistrationDelegate = server.RegisterResource(
+    const auto unregistrationDelegate = server->RegisterResource(
         space,
         [](
-            std::shared_ptr< Http::Server::Request > request
+            std::shared_ptr< Http::IServer::Request > request
         ){
             const auto response = std::make_shared< Http::Client::Response >();
             response->statusCode = 200;

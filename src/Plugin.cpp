@@ -85,7 +85,7 @@ void Plugin::Load(
             if (loadPlugin != nullptr) {
                 diagnosticMessageDelegate("", 0, StringUtils::sprintf("Loading plugin entrypoint", moduleName.c_str()));
                 loadPlugin(
-                    server, 
+                    &server, 
                     *configuration,
                     [this, diagnosticMessageDelegate](
                         std::string senderName,

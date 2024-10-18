@@ -9,7 +9,7 @@
  * © 2024 by Hatem Nabli
  */
 
-#include <Http/Server.hpp>
+#include <Http/IServer.hpp>
 #include <Json/Json.hpp>
 #include <functional>
 #include <SystemUtils/DiagnosticsSender.hpp>
@@ -33,7 +33,7 @@
  *      unable to load successfully. 
  */
 typedef void (*PluginEntryPoint)(
-    Http::Server& server,
+    Http::IServer* server,
     Json::Json configuration,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
