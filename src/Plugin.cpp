@@ -158,7 +158,7 @@ void Plugin::Load(
             "",
             SystemUtils::DiagnosticsSender::Levels::WARNING,
             StringUtils::sprintf(
-                "unable to find plugin '%s' entrypoint",
+                "unable to copy plugin '%s' entrypoint",
                 moduleName.c_str()
             )
         );

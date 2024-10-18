@@ -34,11 +34,11 @@
          * This flag is set to signal when the scanDelegate should
          * be called. this function clears the flag. 
          */
-        bool pluginLoaderScan;
+        bool pluginLoaderScan = false;
         /**  
          * This flag is set to signal when the thread should exit.
          */
-        bool pluginLoaderStop;
+        bool pluginLoaderStop = false;
         /**
          * This is the path to the plugins runtime folder.
          */
@@ -83,9 +83,6 @@
                 if(!plugin.second->pluginImageFile.IsExisting()) {
                     continue;
                 }
-                if(plugin.second->unloadDelegate == nullptr) {
-                    continue;
-                }
                 if (!plugin.second->needsToLoad) {
                     const auto lastModificationTime = plugin.second->pluginImageFile.GetLastModifiedTime();
                     if (plugin.second->lastModifiedTime != lastModificationTime) {  
@@ -119,6 +116,7 @@
                             plugin.first.c_str()
                         )
                     );
+                    pluginLoaderScan = true;
                 }
             }
         }
@@ -200,7 +198,9 @@
             !impl_->directroyMonitor.Start(imagePathChangedDelegate, impl_->pluginsImagePath)    
         ) {
             fprintf(stderr, "warning: unable to monitor plug-ins image directory (%s)\n", impl_->pluginsImagePath.c_str());
+            return;
         }
+        impl_->pluginLoaderStop = false;
         impl_->worker = std::thread(&Impl::Launch, impl_.get());
     }
 

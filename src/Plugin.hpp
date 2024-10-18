@@ -27,7 +27,7 @@ struct Plugin {
      * This flag indicates whether or not the plug-in should
      * be loaded or reloaded.
      */
-    bool needsToLoad = false;
+    bool needsToLoad = true;
     /**
      * This is the plug-in image file.
      */
