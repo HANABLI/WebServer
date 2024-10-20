@@ -6,12 +6,13 @@
  * 
  * @ 2024 by Hatem Nabli
  */
-#include <memory>
+
 #include <functional>
 #include <StringUtils/StringUtils.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
 #include <Http/IServer.hpp>
 #include <Json/Json.hpp>
+#include <SystemUtils/File.hpp>
 
 #ifdef _WIN32
 #define API __declspec(dllexport)
@@ -56,23 +57,67 @@ extern "C" API void LoadPlugin(
         diagnosticMessageDelegate(
             "",
             SystemUtils::DiagnosticsSender::Levels::ERROR,
-            "unable to parse 'space' uri"
+            "unable to parse 'root' uri"
         );
         return;
     }
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
+    if (!configuration.Has("root")) {
+        diagnosticMessageDelegate(
+            "",
+            SystemUtils::DiagnosticsSender::Levels::ERROR,
+            "no 'root' Uri in the configuration" 
+        );
+        return;
+    }
+    const std::string root = *configuration["root"];
+
     const auto unregistrationDelegate = server->RegisterResource(
         space,
-        [](
+        [root](
             std::shared_ptr< Http::IServer::Request > request
         ){
+            const auto path = StringUtils::Join(
+                {
+                    root,
+                    StringUtils::Join(request->target.GetPath(), "/")
+                },
+                "/"
+            );
+            SystemUtils::File file(path);
             const auto response = std::make_shared< Http::Client::Response >();
-            response->statusCode = 200;
-            response->status = "OK";
-            response->headers.AddHeader("Content-Type", "text/plain");
-            response->body = "Coming soon...!";
+            if (file.IsExisting() && (!file.IsDirectory())) {                  
+                if (file.OpenReadOnly()) {
+                    SystemUtils::File::Buffer buffer(file.GetSize()); 
+                    if (file.Read(buffer) == buffer.size()) {
+                        response->statusCode = 200;
+                        response->status = "OK";
+                        response->headers.AddHeader("Content-Type", "text/html");
+                        response->body.assign(buffer.begin(), buffer.end());
+                    } else {
+                        response->statusCode = 204;
+                        response->status = "No Content";
+                        response->headers.AddHeader("Content-Type", "text/plain");
+                        response->body = "ooops can't read the file...!";
+                    };
+                    
+                } else {
+                    response->statusCode = 500;
+                    response->status = "Internal Server Error";
+                    response->headers.AddHeader("Content-Type", "text/plain");
+                    response->body = "ooops can't open the file...!";
+                }
+            } else {
+                response->statusCode = 404;
+                response->status = "Not Found";
+                response->headers.AddHeader("Content-Type", "text/plain");
+                response->body = "Sorry, resource not found...!";
+            }
             response->headers.AddHeader("Content-Length", StringUtils::sprintf("%zu", response->body.size()));  
+            
+            
+            
             return response;
         }
     );
