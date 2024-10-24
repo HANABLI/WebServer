@@ -113,10 +113,7 @@ extern "C" API void LoadPlugin(
                 response->status = "Not Found";
                 response->headers.AddHeader("Content-Type", "text/plain");
                 response->body = "Sorry, resource not found...!";
-            }
-            response->headers.AddHeader("Content-Length", StringUtils::sprintf("%zu", response->body.size()));  
-            
-            
+            }         
             
             return response;
         }
