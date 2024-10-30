@@ -7,6 +7,7 @@
  * @ 2024 by Hatem Nabli
  */
 
+#include <inttypes.h>
 #include <functional>
 #include <StringUtils/StringUtils.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -91,10 +92,26 @@ extern "C" API void LoadPlugin(
                 if (file.OpenReadOnly()) {
                     SystemUtils::File::Buffer buffer(file.GetSize()); 
                     if (file.Read(buffer) == buffer.size()) {
-                        response->statusCode = 200;
-                        response->status = "OK";
+                        // TODO replace it with something that gives
+                        // a strong entity tag -- this one is weak
+                        uint32_t sum = 0;
+                        for (auto b:buffer) {
+                            sum += b;
+                        }
+                        const auto etag = StringUtils::sprintf("%" PRIu32, sum);
+                        if (
+                            request->headers.HasHeader("If-None-Match")
+                            && (request->headers.GetHeaderValue("If-None-Match") == etag)
+                        ) {
+                            response->statusCode = 304;
+                            response->status = "Not Modified";
+                        } else {
+                            response->statusCode = 200;
+                            response->status = "OK";
+                            response->body.assign(buffer.begin(), buffer.end());
+                        }
                         response->headers.AddHeader("Content-Type", "text/html");
-                        response->body.assign(buffer.begin(), buffer.end());
+                        response->headers.AddHeader("Etag", etag);
                     } else {
                         response->statusCode = 204;
                         response->status = "No Content";

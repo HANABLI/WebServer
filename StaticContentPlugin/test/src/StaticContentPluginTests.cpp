@@ -124,3 +124,50 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_Load_Test) {
     ASSERT_EQ("Hello", response->body);
     ASSERT_FALSE(unloadDelegate == nullptr);
 }
+
+TEST_F(StaticContentPluginTests, StaticContentPluginTest_checkforEtag_Test) {
+    MockServer server;
+    SystemUtils::File testFile(testAreaPath + "/exemple.txt");
+    (void)testFile.OpenReadWrite();
+    testFile.Write("Hello", 5);
+    (void)testFile.Close();
+    std::function< void() > unloadDelegate;
+    Json::Json configuration(Json::Json::Type::Object);
+    configuration.Set("space", "/");
+    configuration.Set("root",testAreaPath );
+    LoadPlugin(
+        &server,
+        configuration,
+        [](
+            std::string senderName,
+            size_t level,
+            std::string message
+        ){
+            printf(
+                "[%s:%zu] %s\n",
+                senderName.c_str(),
+                level,
+                message.c_str()
+            );
+        },
+        unloadDelegate
+    );
+    // Send initila request to get the entity tag 
+    // of the test file.
+    auto request = std::make_shared< Http::IServer::Request >();
+    request->target.SetPath({"exemple.txt"});
+    auto response = server.registredResourceDelegate(request);
+    ASSERT_EQ(200, response->statusCode);
+    ASSERT_TRUE(response->headers.HasHeader("ETag"));
+    const auto etag = response->headers.GetHeaderValue("ETag");
+
+    // Send second conditional request for the test file
+    // this time expecting to 304 Not Modified response.
+    request = std::make_shared<Http::IServer::Request>();
+    request->target.SetPath({"exemple.txt"});
+    request->headers.SetHeader("If-None-Match", etag);
+    response = server.registredResourceDelegate(request);
+    EXPECT_EQ(304 , response->statusCode);
+    EXPECT_EQ("Not Modified" , response->status);
+    
+}
