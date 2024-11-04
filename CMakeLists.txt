@@ -16,6 +16,8 @@ set(Sources
     src/Plugin.cpp
     src/PluginLoader.hpp
     src/PluginLoader.cpp
+    src/TimeKeeper.hpp
+    src/TimeKeeper.cpp
 )
 
 

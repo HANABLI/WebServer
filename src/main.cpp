@@ -24,6 +24,7 @@
 #include <Http/Server.hpp>
 #include <Json/Json.hpp>
 #include "PluginLoader.hpp"
+#include "TimeKeeper.hpp"
 #include <SystemUtils/File.hpp>
 #include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
 
@@ -231,18 +232,20 @@ Json::Json ReadConfiguration(const Environment& environment) {
  */
 bool ConfigureAndStartServer(
     Http::Server& server,
-    std::shared_ptr< Http::ServerTransportLayer > transport,
+    std::shared_ptr<  HttpNetworkTransport::HttpServerNetworkTransport > transport,
     const Json::Json& configuration,
     const Environment& environment
 ) {
     uint16_t port = 0;
+    auto timeKeeper = std::make_shared< TimeKeeper >();
+    Http::Server::MobilizationDependencies dep = {transport, port, timeKeeper};
     if (configuration.Has("port")) {
-        port = (int)*(configuration)["port"];
+        dep.port = (int)*(configuration)["port"];
     } 
     if (port == 0) {
-        port = DEFAULT_PORT;
+        dep.port = DEFAULT_PORT;
     }
-    if (!server.Mobilize(transport, port)) {
+    if (!server.Mobilize(dep)) {
         return false;
     }
     return true;
