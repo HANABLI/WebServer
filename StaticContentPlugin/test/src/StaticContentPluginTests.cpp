@@ -169,5 +169,5 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_checkforEtag_Test) {
     response = server.registredResourceDelegate(request);
     EXPECT_EQ(304 , response->statusCode);
     EXPECT_EQ("Not Modified" , response->status);
-    
+    EXPECT_TRUE(response->body.empty());
 }
