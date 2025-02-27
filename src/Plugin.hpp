@@ -1,25 +1,25 @@
-#ifndef PLUGIN_CPP
+#ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
 /**
  * @file Plugin.hpp
- * 
+ *
  * This module declares the Plugin class.
- * 
- * © 2014 by Hatem Nabli
+ *
+ * © 2024 by Hatem Nabli
  */
 
-#include <memory>
-#include <functional>
 #include <Http/Server.hpp>
+#include <Json/Json.hpp>
 #include <SystemUtils/DynamicLibrary.hpp>
 #include <SystemUtils/File.hpp>
-#include <Json/Json.hpp>
+#include <functional>
+#include <memory>
 
-struct Plugin {
-    
-     /* data */
-     /**
+struct Plugin
+{
+    /* data */
+    /**
      * This is the time that the plug-in image was last modified.
      */
     time_t lastModifiedTime = 0;
@@ -48,7 +48,7 @@ struct Plugin {
      * This is the configuration object to give to the plugin when
      * it's loaded.
      */
-    std::shared_ptr< Json::Json > configuration;
+    std::shared_ptr<Json::Json> configuration;
 
     /**
      * This is used to dynamically link with the run-time copy
@@ -57,25 +57,22 @@ struct Plugin {
     SystemUtils::DynamicLibrary pluginRuntimeLibrary;
 
     /**
-     * If the plug-in is currently loaded, this is the function to 
+     * If the plug-in is currently loaded, this is the function to
      * call in order to unload it.
      */
-    std::function< void() > unloadDelegate;
+    std::function<void()> unloadDelegate;
 
     /**
      * This is the constructor for the structure.
-     * 
+     *
      * @param[in] imageFileName
      *      This is the plug-in image file name.
-     * 
+     *
      * @param[in] runtimeFileName
      *      This is the plug in runtime file name.
      */
-    Plugin::Plugin(std::string& imageFileName, std::string& runtimeFileName):
-        pluginImageFile(imageFileName),
-        pluginRuntimeFile(runtimeFileName)
-    {
-    }
+    Plugin::Plugin(std::string& imageFileName, std::string& runtimeFileName) :
+        pluginImageFile(imageFileName), pluginRuntimeFile(runtimeFileName) {}
 
     /**
      * This method cleanly load the plug-in, following the procedure
@@ -87,30 +84,27 @@ struct Plugin {
      * 4.  Call the entrypoint function, providing the plug-in with access
      *     to the server. Then the plugin will return a function that the
      *     server can call later to unload the plugin.
-     * @note 
+     * @note
      *     The plugin can signal a "failure to load" or other
      *     kind of fatal error simply by leaving the "unload"
      *     delegate as a nullptr
-     * 
+     *
      * @param[in] server
      *      This is the server for which to load the plugin
-     * 
+     *
      * @param[in] pluginsRunTimePath
      *      This is the path to where a copy of the plugin is made
      *      in order to link the code without locking the original
      *      code image . So that the original code image can be updated
      *      even while the plugins is loaded.
-     * 
+     *
      * @param[in] diagnosticMessageDelegate
      *      This is the function delegate to call to publish any diagnostic message.
-     *      
+     *
      */
     void Plugin::Load(
-        Http::Server& server, 
-        bool needsToLoad,
-        const std::string& pluginsRunTimePath, 
-        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
-    );
+        Http::Server& server, bool needsToLoad, const std::string& pluginsRunTimePath,
+        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate);
 
     /**
      * This method is used to cleanly unload the plug-in
@@ -119,14 +113,14 @@ struct Plugin {
      *    Typecally this delegate will turn around and revoke
      *    its registration with the web server.
      * 2. Release the unload delegate (by assigning nullptr
-     *    to the variable holding onto it. Typecally this 
+     *    to the variable holding onto it. Typecally this
      *    will cause any state captured in the unload delegate
      *    to be destroyed/freed. After this it will be safe to
      *    unlink plug-in code).
      * 3. Unlik the plug-in code.
      */
-    void Unload(SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate);
-
+    void Unload(
+        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate);
 };
 
 #endif /* PLUGIN_HPP */

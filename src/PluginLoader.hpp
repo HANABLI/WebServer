@@ -3,33 +3,33 @@
 
 /**
  * @file PluginLoader.hpp
- * 
+ *
  * This module declares the plug-in loader
  * class.
- * 
- * © 2014 by Hatem Nabli
+ *
+ * © 2024 by Hatem Nabli
  */
 
-#include "Plugin.hpp"
-#include <map>
-#include <memory>
-#include <functional>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <SystemUtils/DirectoryMonitor.hpp>
-#include <SystemUtils/DiagnosticsSender.hpp>
 #include <Http/Server.hpp>
 #include <StringUtils/StringUtils.hpp>
+#include <SystemUtils/DiagnosticsSender.hpp>
+#include <SystemUtils/DirectoryMonitor.hpp>
+#include <condition_variable>
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include "Plugin.hpp"
 
 /**
  * This class monitors the directory containing the image files
- * for the plug-ins of the web server. It maintains a worker thread 
+ * for the plug-ins of the web server. It maintains a worker thread
  * which is responsible for loading any image files that are found to match
  * a known plug-in, or reload it if the image file changes.
  */
-class PluginLoader {
-
+class PluginLoader
+{
 public:
     // Lifecycle Methods
     ~PluginLoader() noexcept;
@@ -44,12 +44,9 @@ public:
      * This is the Plug-in loader cunstructor.
      */
     PluginLoader(
-        Http::Server& server,
-        std::string pluginsRunTimePath,
-        std::string pluginsImagePath,
-        std::map< std::string, std::shared_ptr< Plugin> >& plugins,
-        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
-    );
+        Http::Server& server, std::string pluginsRunTimePath, std::string pluginsImagePath,
+        std::map<std::string, std::shared_ptr<Plugin>>& plugins,
+        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate);
 
     /**
      * This method is called to perform manual scanning of the plugin image
@@ -68,7 +65,6 @@ public:
      */
     void StopScanning();
 
-
     // Private properties
 private:
     /* data */
@@ -77,16 +73,13 @@ private:
      * This is the type of structure that contains the private
      * properties of the instance. It is defined in the implementation
      * and declared here to ensure that iwt is scoped inside the class.
-    */
+     */
     struct Impl;
 
     /**
-    * This contains the private properties of the instance.
-    */       
+     * This contains the private properties of the instance.
+     */
     std::unique_ptr<struct Impl> impl_;
-    
-
 };
-
 
 #endif /* PLUGIN_LOADER_HPP */

@@ -1,9 +1,9 @@
 /**
  * @file TimeKeeper.cpp
- * 
- * This module is an implementation of 
+ *
+ * This module is an implementation of
  * the TimeKeeper class.
- * 
+ *
  * © 2024 by Hatem Nabli
  */
 
@@ -11,7 +11,7 @@
 #include <SystemUtils/Time.hpp>
 
 /**
- * 
+ *
  */
 struct TimeKeeper::Impl
 {
@@ -22,10 +22,9 @@ struct TimeKeeper::Impl
     SystemUtils::Time time;
 };
 
-
 TimeKeeper::~TimeKeeper() noexcept = default;
 
-TimeKeeper::TimeKeeper(): _impl(new Impl()){};
+TimeKeeper::TimeKeeper() : _impl(new Impl()){};
 
 double TimeKeeper::GetCurrentTime() {
     return _impl->time.GetTime();
