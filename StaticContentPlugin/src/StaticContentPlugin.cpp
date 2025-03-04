@@ -53,7 +53,7 @@ extern "C" API void LoadPlugin(
     if (!uri.ParseFromString(*configuration["space"]))
     {
         diagnosticMessageDelegate("", SystemUtils::DiagnosticsSender::Levels::ERROR,
-                                  "unable to parse 'root' uri");
+                                  "unable to parse 'space' uri in the configuration file");
         return;
     }
     auto space = uri.GetPath();
@@ -68,7 +68,8 @@ extern "C" API void LoadPlugin(
 
     const auto unregistrationDelegate = server->RegisterResource(
         space,
-        [root](std::shared_ptr<Http::IServer::Request> request)
+        [root](std::shared_ptr<Http::IServer::Request> request,
+               std::shared_ptr<Http::Connection> connection)
         {
             const auto path =
                 StringUtils::Join({root, StringUtils::Join(request->target.GetPath(), "/")}, "/");
