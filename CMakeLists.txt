@@ -2,15 +2,14 @@
 #
 # © 2024 by Hatem Nabli
 
-
 cmake_minimum_required(VERSION 3.8)
 set(this WebServer)
 
-set(Headers 
+set(Headers
     include/WebServer/PluginEntryPoint.hpp
 )
 
-set(Sources 
+set(Sources
     src/main.cpp
     src/Plugin.hpp
     src/Plugin.cpp
@@ -20,9 +19,8 @@ set(Sources
     src/TimeKeeper.cpp
 )
 
-
 add_executable(${this} ${Sources} ${Headers})
-set_target_properties(${this} PROPERTIES 
+set_target_properties(${this} PROPERTIES
     FOLDER Applications
 )
 
@@ -34,6 +32,8 @@ target_link_libraries(${this} PUBLIC
     HttpNetworkTransport
     SystemUtils
     StringUtils
+    WebSocket
 )
 
 add_subdirectory(StaticContentPlugin)
+add_subdirectory(ChatRoomPlugin)
