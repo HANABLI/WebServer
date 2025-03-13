@@ -18,7 +18,7 @@
 #    define API
 #endif /* _WIN32 / POSIX */
 extern "C" API void LoadPlugin(
-    Http::IServer* server, Json::Json configuration,
+    Http::IServer* server, Json::Value configuration,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessagedelegate,
     std::function<void()>& unloadDelegate);
 
@@ -87,7 +87,7 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_Load_Test) {
     testFile.Write("Hello", 5);
     (void)testFile.Close();
     std::function<void()> unloadDelegate;
-    Json::Json configuration(Json::Json::Type::Object);
+    Json::Value configuration(Json::Value::Type::Object);
     configuration.Set("space", "/");
     configuration.Set("root", testAreaPath);
     LoadPlugin(
@@ -109,7 +109,7 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_checkforEtag_Test) {
     testFile.Write("Hello", 5);
     (void)testFile.Close();
     std::function<void()> unloadDelegate;
-    Json::Json configuration(Json::Json::Type::Object);
+    Json::Value configuration(Json::Value::Type::Object);
     configuration.Set("space", "/");
     configuration.Set("root", testAreaPath);
     LoadPlugin(

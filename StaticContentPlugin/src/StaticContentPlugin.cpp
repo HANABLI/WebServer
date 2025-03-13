@@ -40,7 +40,7 @@
  *      unable to load successfully.
  */
 extern "C" API void LoadPlugin(
-    Http::IServer* server, Json::Json configuration,
+    Http::IServer* server, Json::Value configuration,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function<void()>& unloadDelegate) {
     Uri::Uri uri;
@@ -50,7 +50,7 @@ extern "C" API void LoadPlugin(
                                   "no 'space' Uri in the configuration");
         return;
     }
-    if (!uri.ParseFromString(*configuration["space"]))
+    if (!uri.ParseFromString(configuration["space"]))
     {
         diagnosticMessageDelegate("", SystemUtils::DiagnosticsSender::Levels::ERROR,
                                   "unable to parse 'space' uri in the configuration file");
@@ -64,7 +64,7 @@ extern "C" API void LoadPlugin(
                                   "no 'root' Uri in the configuration");
         return;
     }
-    const std::string root = *configuration["root"];
+    const std::string root = configuration["root"];
 
     const auto unregistrationDelegate = server->RegisterResource(
         space,

@@ -5,6 +5,8 @@
 cmake_minimum_required(VERSION 3.8)
 set(this ChatRoomPluginTests)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:ChatRoomPlugin>)
+
 set(Sources
     src/ChatRoomPluginTests.cpp
 )
@@ -22,10 +24,9 @@ target_link_libraries(${this} PUBLIC
     ChatRoomPlugin
 )
 
-add_custom_command(TARGET ${this} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:StaticContentPlugin> $<TARGET_FILE_DIR:${This}>
-)
-
+# add_custom_command(TARGET ${this} POST_BUILD
+# COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:ChatRoomPlugin> $<TARGET_FILE_DIR:${This}>
+# )
 add_test(
     NAME ${this}
     COMMAND ${this}

@@ -48,7 +48,7 @@ struct Plugin
      * This is the configuration object to give to the plugin when
      * it's loaded.
      */
-    std::shared_ptr<Json::Json> configuration;
+    Json::Value configuration;
 
     /**
      * This is used to dynamically link with the run-time copy

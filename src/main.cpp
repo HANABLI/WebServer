@@ -151,10 +151,10 @@ void InterruptHandler(int sig) {
  * @return
  *      The server's configuration is returned as a JSON obejct.
  */
-Json::Json ReadConfiguration(const Environment& environment) {
+Json::Value ReadConfiguration(const Environment& environment) {
     // Default configuration to be used when there are any issues
     // reading the actual configuration file.
-    Json::Json configuration(Json::Json::Type::Object);
+    Json::Value configuration(Json::Value::Type::Object);
     configuration.Set("port", DEFAULT_PORT);
 
     // Open the configuration file.
@@ -211,7 +211,7 @@ Json::Json ReadConfiguration(const Environment& environment) {
     }
 
     // Decode the configuration file.
-    configuration = Json::Json::FromEncoding(encodedConfig.data());
+    configuration = Json::Value::FromEncoding(encodedConfig.data());
     return configuration;
 }
 
@@ -236,12 +236,12 @@ Json::Json ReadConfiguration(const Environment& environment) {
 bool ConfigureAndStartServer(
     Http::Server& server,
     std::shared_ptr<HttpNetworkTransport::HttpServerNetworkTransport> transport,
-    const Json::Json& configuration, const Environment& environment) {
+    const Json::Value& configuration, const Environment& environment) {
     uint16_t port = 0;
     auto timeKeeper = std::make_shared<TimeKeeper>();
     Http::Server::MobilizationDependencies dep = {transport, port, timeKeeper};
     if (configuration.Has("port"))
-    { dep.port = (int)*(configuration)["port"]; }
+    { dep.port = (int)(configuration)["port"]; }
     if (dep.port == 0)
     { dep.port = DEFAULT_PORT; }
     if (!server.Mobilize(dep))
@@ -267,14 +267,14 @@ bool ConfigureAndStartServer(
  *      messages.
  */
 void MonitorServer(
-    Http::Server& server, const Json::Json& configuration, const Environment& environment,
+    Http::Server& server, const Json::Value& configuration, const Environment& environment,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate) {
     std::string pluginsImagePath = environment.pluginsImagePath;
     if (configuration.Has("plugins-image"))
-    { pluginsImagePath = *configuration["plugins-image"]; }
+    { pluginsImagePath = configuration["plugins-image"]; }
     std::string pluginsRunTimePath = environment.runtimePluginPath;
     if (configuration.Has("plugins-runtime"))
-    { pluginsRunTimePath = *configuration["plugins-runtime"]; }
+    { pluginsRunTimePath = configuration["plugins-runtime"]; }
     std::map<std::string, std::shared_ptr<Plugin>> plugins;
     const auto pluginsEntries = configuration["plugins"];
     const auto pluginsEnabled = configuration["plugins-enabled"];
@@ -286,19 +286,19 @@ void MonitorServer(
 #else
     moduleExtension = ".so";
 #endif
-    for (size_t i = 0; i < pluginsEnabled->GetSize(); ++i)
+    for (size_t i = 0; i < pluginsEnabled.GetSize(); ++i)
     {
-        std::string pluginName = *(*pluginsEnabled)[i];
-        if (pluginsEntries->Has(pluginName))
+        std::string pluginName = (pluginsEnabled)[i];
+        if (pluginsEntries.Has(pluginName))
         {
-            const auto pluginEntry = (*pluginsEntries)[pluginName];
-            const std::string pluginModule = *(*pluginEntry)["module"];
+            const auto pluginEntry = (pluginsEntries)[pluginName];
+            const std::string pluginModule = (pluginEntry)["module"];
             auto plugin = plugins[pluginName] =
                 std::make_shared<Plugin>(pluginsImagePath + "/" + pluginModule + moduleExtension,
                                          pluginsRunTimePath + "/" + pluginModule + moduleExtension);
             plugin->moduleName = pluginModule;
             plugin->lastModifiedTime = plugin->pluginImageFile.GetLastModifiedTime();
-            plugin->configuration = (*pluginEntry)["configuration"];
+            plugin->configuration = (pluginEntry)["configuration"];
         }
     }
     PluginLoader pluginLoader(server, pluginsRunTimePath, pluginsImagePath, plugins,

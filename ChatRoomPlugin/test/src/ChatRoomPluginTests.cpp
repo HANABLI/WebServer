@@ -19,7 +19,7 @@
 #    define API
 #endif /* _WIN32 / POSIX */
 extern "C" API void LoadPlugin(
-    Http::IServer* server, Json::Json configuration,
+    Http::IServer* server, Json::Value configuration,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessagedelegate,
     std::function<void()>& unloadDelegate);
 
@@ -85,6 +85,12 @@ namespace
         DataReceivedDelegate dataReceivedDelegate;
 
         /**
+         * This is the delegate to call whenever data will be sent to
+         * the remote peer.
+         */
+        DataReceivedDelegate sendDataDelegate;
+
+        /**
          * This is the delegate to call whenever connection has been broken.
          */
         BrokenDelegate brokenDelegate;
@@ -121,9 +127,7 @@ namespace
             brokenDelegate = newBrokenDelegate;
         }
 
-        virtual void SendData(const std::vector<uint8_t>& data) override {
-            (void)dataReceived.insert(dataReceived.end(), data.begin(), data.end());
-        }
+        virtual void SendData(const std::vector<uint8_t>& data) override { sendDataDelegate(data); }
 
         virtual void Break(bool clean) override { broken = true; }
     };
@@ -161,18 +165,30 @@ struct ChatRoomPluginTests : public ::testing::Test
      */
     std::shared_ptr<MockConnection> serverConnection =
         std::make_shared<MockConnection>("mock-server");
+
+    /**
+     * This store all messages received from the chat room.
+     */
+    std::vector<Json::Value> messagesReceived;
     // Methods
 
     // ::testing::Test
 
     virtual void SetUp() {
-        Json::Json config(Json::Json::Type::Object);
+        Json::Value config(Json::Value::Type::Object);
         config.Set("space", CHAT_ROOM_PATH);
         LoadPlugin(
             &server, config,
             [](std::string senderName, size_t level, std::string message)
             { printf("[%s:%zu] %s\n", senderName.c_str(), level, message.c_str()); },
             unloadDelegate);
+
+        clientConnection->sendDataDelegate = [this](const std::vector<uint8_t>& data)
+        { serverConnection->dataReceivedDelegate(data); };
+        serverConnection->sendDataDelegate = [this](const std::vector<uint8_t>& data)
+        { clientConnection->dataReceivedDelegate(data); };
+        ws.SetTextDelegate([this](const std::string& data)
+                           { messagesReceived.push_back(Json::Value::FromEncoding(data)); });
         const auto openRequest = std::make_shared<Http::Server::Request>();
         openRequest->method = "GET";
         (void)openRequest->target.ParseFromString("/chat");
@@ -193,4 +209,12 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_Load_Test) {
               server.registeredResourcesSubspacePath);
 }
 
-TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_Connect_Test) {}
+TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserName_Test) {
+    ws.SendText("{\"Type\": \"SetUserName\", \"UserName\": \"Hatem\"}");
+    ws.SendText("{\"Type\": \"GetUserNames\"}");
+    ASSERT_EQ(
+        (std::vector<Json::Value>{
+            Json::Value::FromEncoding("{\"Type\": \"UserNames\", \"UserNames\": [\"Hatem\"]}"),
+        }),
+        messagesReceived);
+}

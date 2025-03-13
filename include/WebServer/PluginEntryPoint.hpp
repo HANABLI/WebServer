@@ -33,7 +33,7 @@
  *      unable to load successfully.
  */
 typedef void (*PluginEntryPoint)(
-    Http::IServer* server, Json::Json configuration,
+    Http::IServer* server, Json::Value configuration,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function<void()>& unloadDelegate);
 
