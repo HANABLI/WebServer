@@ -28,6 +28,19 @@
 namespace
 {
     /**
+     * This is a registred user of the chat room
+     */
+    struct Account
+    {
+        /**
+         * This is the string that the user needs to present
+         * for the value of "Password" when setting their nickname
+         * in order to link the user to the account
+         */
+        std::string password;
+    };
+
+    /**
      * This is an user struct to use to test the chat room
      */
     struct User
@@ -85,6 +98,11 @@ namespace
          */
         std::map<unsigned int, User> users;
 
+        /**
+         * These are the registered users of the chat room, keyed by
+         * userName
+         */
+        std::map<std::string, Account> accounts;
         /**
          * This is the next session id that my be assigned to a new
          * user.
@@ -170,16 +188,35 @@ namespace
             const auto message = Json::Value::FromEncoding(data);
             if ((message["Type"] == "SetUserName") && message.Has("UserName"))
             {
-                userEntry->second.userName = message["UserName"];
+                const std::string userName = message["UserName"];
+                const std::string password = message["Password"];
+                Json::Value response(Json::Value::Type::Object);
+                response.Set("Type", "SetUserNameResult");
+                auto accountEntry = accounts.find(userName);
+                if (accountEntry == accounts.end() || accountEntry->second.password == password)
+                {
+                    userEntry->second.userName = message["UserName"];
+                    auto& account = accounts[userName];
+                    account.password = password;
+                    response.Set("Success", true);
+                } else
+                { response.Set("Success", false); }
+                userEntry->second.ws.SendText(response.ToEncoding());
+
             } else if (message["Type"] == "GetUserNames")
             {
                 Json::Value response(Json::Value::Type::Object);
                 response.Set("Type", "UserNames");
-                Json::Value userNames(Json::Value::Type::Array);
+                std::set<std::string> userNamesSet;
                 for (const auto& user : users)
                 {
                     if (!user.second.userName.empty())
-                    { userNames.Add(user.second.userName); }
+                    { userNamesSet.insert(user.second.userName); }
+                }
+                Json::Value userNames(Json::Value::Type::Array);
+                for (const auto& userName : userNamesSet)
+                {
+                    { userNames.Add(userName); }
                 }
                 response.Set("UserNames", userNames);
                 userEntry->second.ws.SendText(response.ToEncoding());
@@ -269,13 +306,20 @@ extern "C" API void LoadPlugin(
     }
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
-
+    room.Start();
     const auto unregistrationDelegate =
         server->RegisterResource(space, [](std::shared_ptr<Http::IServer::Request> request,
                                            std::shared_ptr<Http::Connection> connection)
                                  { return room.AddUser(request, connection); });
 
-    unloadDelegate = [unregistrationDelegate] { unregistrationDelegate(); };
+    unloadDelegate = [unregistrationDelegate]
+    {
+        unregistrationDelegate();
+        room.Stop();
+        room.users.clear();
+        room.accounts.clear();
+        room.usersHaveClosed = false;
+    };
 }
 
 /**
