@@ -170,6 +170,59 @@ namespace
         }
 
         /**
+         * This method handles the "SetUserName" message from users
+         * in the chat room.
+         *
+         * @param[in] message
+         *      This is the content of the user message.
+         * @param[in] userEntry
+         *      This is the entry of the user who sent the message.
+         */
+        void SetUserName(const Json::Value& message,
+                         std::map<unsigned int, User>::iterator userEntry) {
+            const std::string userName = message["UserName"];
+            const std::string password = message["Password"];
+            Json::Value response(Json::Value::Type::Object);
+            response.Set("Type", "SetUserNameResult");
+            auto accountEntry = accounts.find(userName);
+            if (!userName.empty() &&
+                (accountEntry == accounts.end() || accountEntry->second.password == password))
+            {
+                userEntry->second.userName = message["UserName"];
+                auto& account = accounts[userName];
+                account.password = password;
+                response.Set("Success", true);
+            } else
+            { response.Set("Success", false); }
+            userEntry->second.ws.SendText(response.ToEncoding());
+        }
+
+        /**
+         * This method handles the "GetUserNames" message from users
+         * in the chat room.
+         *
+         * @param[in] userEntry
+         *      This is the entry of the user who sent the message.
+         */
+        void GetUsersName(std::map<unsigned int, User>::iterator userEntry) {
+            Json::Value response(Json::Value::Type::Object);
+            response.Set("Type", "UserNames");
+            std::set<std::string> userNamesSet;
+            for (const auto& user : users)
+            {
+                if (!user.second.userName.empty())
+                { userNamesSet.insert(user.second.userName); }
+            }
+            Json::Value userNames(Json::Value::Type::Array);
+            for (const auto& userName : userNamesSet)
+            {
+                { userNames.Add(userName); }
+            }
+            response.Set("UserNames", userNames);
+            userEntry->second.ws.SendText(response.ToEncoding());
+        }
+
+        /**
          * This is called whenever a text message is received from an user
          * in the chat room.
          *
@@ -188,39 +241,10 @@ namespace
             const auto message = Json::Value::FromEncoding(data);
             if ((message["Type"] == "SetUserName") && message.Has("UserName"))
             {
-                const std::string userName = message["UserName"];
-                const std::string password = message["Password"];
-                Json::Value response(Json::Value::Type::Object);
-                response.Set("Type", "SetUserNameResult");
-                auto accountEntry = accounts.find(userName);
-                if (accountEntry == accounts.end() || accountEntry->second.password == password)
-                {
-                    userEntry->second.userName = message["UserName"];
-                    auto& account = accounts[userName];
-                    account.password = password;
-                    response.Set("Success", true);
-                } else
-                { response.Set("Success", false); }
-                userEntry->second.ws.SendText(response.ToEncoding());
+                SetUserName(message, userEntry);
 
             } else if (message["Type"] == "GetUserNames")
-            {
-                Json::Value response(Json::Value::Type::Object);
-                response.Set("Type", "UserNames");
-                std::set<std::string> userNamesSet;
-                for (const auto& user : users)
-                {
-                    if (!user.second.userName.empty())
-                    { userNamesSet.insert(user.second.userName); }
-                }
-                Json::Value userNames(Json::Value::Type::Array);
-                for (const auto& userName : userNamesSet)
-                {
-                    { userNames.Add(userName); }
-                }
-                response.Set("UserNames", userNames);
-                userEntry->second.ws.SendText(response.ToEncoding());
-            }
+            { GetUsersName(userEntry); }
         }
 
         /**
