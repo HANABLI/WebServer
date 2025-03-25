@@ -28,6 +28,11 @@
 namespace
 {
     /**
+     * This is the number of milliseconds to wait between rounds of polling
+     * in the worker thread of the chat room.
+     */
+    constexpr unsigned int WORKER_POLLING_PERIOD_MILLISECONDS = 50;
+    /**
      * This is a registred user of the chat room
      */
     struct Account
@@ -58,7 +63,7 @@ namespace
         /**
          * This indicate whether or not the user is connected to the room.
          */
-        bool open = false;
+        bool open = true;
     };
     /**
      * This represent the state of the chat room
@@ -144,7 +149,9 @@ namespace
             std::unique_lock<decltype(mutex)> lock(mutex);
             while (!stopWorker)
             {
-                workerWakeCondition.wait(lock, [this] { return stopWorker || usersHaveClosed; });
+                workerWakeCondition.wait_for(
+                    lock, std::chrono::milliseconds(WORKER_POLLING_PERIOD_MILLISECONDS),
+                    [this] { return stopWorker || usersHaveClosed; });
                 if (usersHaveClosed)
                 {
                     std::vector<User> closedUsers;
@@ -155,8 +162,27 @@ namespace
                             ++user;
                         } else
                         {
+                            const auto userName = user->second.userName;
                             closedUsers.push_back(std::move(user->second));
                             user = users.erase(user);
+                            bool stillInTheRoom = false;
+                            for (const auto& userEntry : users)
+                            {
+                                if (userEntry.second.userName == userName)
+                                {
+                                    stillInTheRoom = true;
+                                    break;
+                                }
+                            }
+                            if (!stillInTheRoom)
+                            {
+                                Json::Value response(Json::Value::Type::Object);
+                                response.Set("Type", "Leave");
+                                response.Set("UserName", userName);
+                                const auto responseToEncoding = response.ToEncoding();
+                                for (auto& user : users)
+                                { user.second.ws.SendText(responseToEncoding); }
+                            }
                         }
                     }
                     usersHaveClosed = false;
@@ -223,6 +249,27 @@ namespace
         }
 
         /**
+         * This method handles the "Chat" message from
+         * users in the chat room.
+         *
+         * @param[in] message
+         *      This is the content of the user message.
+         * @param[in] userEntry
+         *      This is the entry of the user whos ent the message.
+         */
+        void Chat(const Json::Value& message, std::map<unsigned int, User>::iterator userEntry) {
+            const std::string chat = message["Chat"];
+            if (chat.empty())
+            { return; }
+            Json::Value response(Json::Value::Type::Object);
+            response.Set("Type", "PostChatResult");
+            response.Set("Sender", userEntry->second.userName);
+            response.Set("Chat", chat);
+            for (auto& user : users)
+            { user.second.ws.SendText(response.ToEncoding()); }
+        }
+
+        /**
          * This is called whenever a text message is received from an user
          * in the chat room.
          *
@@ -244,7 +291,10 @@ namespace
                 SetUserName(message, userEntry);
 
             } else if (message["Type"] == "GetUserNames")
-            { GetUsersName(userEntry); }
+            {
+                GetUsersName(userEntry);
+            } else if (message["Type"] == "PostChat" && message.Has("Chat"))
+            { Chat(message, userEntry); }
         }
 
         /**
@@ -254,11 +304,12 @@ namespace
          * @param[in] sessionId
          *      This is the session ID of the user to remove from chat room.
          */
-        void RemoveUser(unsigned int sessionId) {
+        void RemoveUser(unsigned int sessionId, unsigned int code, const std::string& reason) {
             std::lock_guard<decltype(mutex)> lock(mutex);
             const auto user = users.find(sessionId);
             if (user == users.end())
             { return; }
+            user->second.ws.Close(code, reason);
             user->second.open = false;
             usersHaveClosed = true;
             workerWakeCondition.notify_all();
@@ -285,7 +336,7 @@ namespace
             user.ws.SetTextDelegate([this, sessionId](const std::string& data)
                                     { ReceiveMessage(sessionId, data); });
             user.ws.SetCloseDelegate([this, sessionId](unsigned int code, const std::string& reason)
-                                     { RemoveUser(sessionId); });
+                                     { RemoveUser(sessionId, code, reason); });
             if (!user.ws.OpenAsServer(connection, *request, *response))
             { (void)users.erase(sessionId); }
             return response;

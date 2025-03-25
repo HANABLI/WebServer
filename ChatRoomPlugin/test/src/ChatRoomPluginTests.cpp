@@ -8,6 +8,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <mutex>
+#include <condition_variable>
 #include <SystemUtils/File.hpp>
 #include <StringUtils/StringUtils.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -156,9 +158,26 @@ struct ChatRoomPluginTests : public ::testing::Test
     std::function<void()> unloadDelegate;
 
     /**
+     * This is used to synchronize access to the wsClosed flags
+     * and the wsWaitCondition variable
+     */
+    std::mutex wsMutex;
+
+    /**
+     * This is used to wait for, or signal, the condition of one or more
+     * wsClosed flags being set.
+     */
+    std::condition_variable wsWaitCondition;
+
+    /**
      * This is used to connect with the chat room and communicate with it.
      */
     WebSocket::WebSocket ws[NUM_MOCK_CLIENTS];
+
+    /**
+     * This indicate whether or not the corresponding  webSocket have been closed
+     */
+    bool wsClosed[NUM_MOCK_CLIENTS];
 
     /**
      * This simulate the client side of the HTTP connection between the client
@@ -198,15 +217,27 @@ struct ChatRoomPluginTests : public ::testing::Test
             { serverConnection[i]->dataReceivedDelegate(data); };
             serverConnection[i]->sendDataDelegate = [this, i](const std::vector<uint8_t>& data)
             { clientConnection[i]->dataReceivedDelegate(data); };
+            wsClosed[i] = false;
             ws[i].SetTextDelegate(
                 [this, i](const std::string& data)
-                { messagesReceived[i].push_back(Json::Value::FromEncoding(data)); });
+                {
+                    std::lock_guard<decltype(wsMutex)> lock(wsMutex);
+                    messagesReceived[i].push_back(Json::Value::FromEncoding(data));
+                    wsWaitCondition.notify_all();
+                });
+            ws[i].SetCloseDelegate(
+                [this, i](unsigned int code, const std::string& reason)
+                {
+                    std::lock_guard<decltype(wsMutex)> lock(wsMutex);
+                    wsClosed[i] = true;
+                    wsWaitCondition.notify_all();
+                });
             const auto openRequest = std::make_shared<Http::Server::Request>();
             openRequest->method = "GET";
             (void)openRequest->target.ParseFromString("/chat");
             ws[i].StartOpenAsClient(*openRequest);
             const auto openResponse =
-                server.registredResourceDelegate(openRequest, serverConnection[i]);
+                server.registredResourceDelegate(openRequest, serverConnection[i], "");
             ASSERT_TRUE(ws[i].CompleteOpenAsClient(clientConnection[i], *openResponse));
         }
     }
@@ -319,5 +350,131 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_RoomCleanAfterUnload_Test) {
     expectedResponse.Set("Type", "UserNames");
     expectedResponse.Set("UserNames", Json::Value::Type::Array);
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    messagesReceived[0].clear();
+}
+
+TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_TellSomeThings_Test) {
+    // Hatem join the chat room.
+    const std::string password1 = "PopChamp";
+    Json::Value message(Json::Value::Type::Object);
+    message.Set("Type", "SetUserName");
+    message.Set("UserName", "Hatem");
+    message.Set("Password", password1);
+    ws[0].SendText(message.ToEncoding());
+    Json::Value expectedResponse(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "SetUserNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    messagesReceived[0].clear();
+    // Maya join the chat room.
+    const std::string password2 = "PopOps";
+    message = Json::Value(Json::Value::Type::Object);
+    message.Set("Type", "SetUserName");
+    message.Set("UserName", "Maya");
+    message.Set("Password", password2);
+    ws[1].SendText(message.ToEncoding());
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "SetUserNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    messagesReceived[1].clear();
+
+    // Check if users was in the room.
+    message = Json::Value(Json::Value::Type::Object);
+    message.Set("Type", "GetUserNames");
+    ws[0].SendText(message.ToEncoding());
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "UserNames");
+    expectedResponse.Set("UserNames", {"Hatem", "Maya"});
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    messagesReceived[0].clear();
+
+    // Maya says some things.
+    message = Json::Value(Json::Value::Type::Object);
+    message.Set("Type", "PostChat");
+    message.Set("Chat", "Hello");
+    ws[1].SendText(message.ToEncoding());
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "PostChatResult");
+    expectedResponse.Set("Sender", "Maya");
+    expectedResponse.Set("Chat", "Hello");
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    messagesReceived[1].clear();
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    messagesReceived[0].clear();
+}
+
+TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
+    // Hatem join the chat room.
+    const std::string password1 = "PopChamp";
+    Json::Value message(Json::Value::Type::Object);
+    message.Set("Type", "SetUserName");
+    message.Set("UserName", "Hatem");
+    message.Set("Password", password1);
+    ws[0].SendText(message.ToEncoding());
+    Json::Value expectedResponse(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "SetUserNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    messagesReceived[0].clear();
+    // Maya join the chat room.
+    const std::string password2 = "PopOps";
+    message = Json::Value(Json::Value::Type::Object);
+    message.Set("Type", "SetUserName");
+    message.Set("UserName", "Maya");
+    message.Set("Password", password2);
+    ws[1].SendText(message.ToEncoding());
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "SetUserNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    messagesReceived[1].clear();
+
+    // Check if users was in the room.
+    message = Json::Value(Json::Value::Type::Object);
+    message.Set("Type", "GetUserNames");
+    ws[0].SendText(message.ToEncoding());
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "UserNames");
+    expectedResponse.Set("UserNames", {"Hatem", "Maya"});
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    messagesReceived[0].clear();
+
+    // Maya says some things.
+    message = Json::Value(Json::Value::Type::Object);
+    message.Set("Type", "PostChat");
+    message.Set("Chat", "Hello");
+    ws[1].SendText(message.ToEncoding());
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "PostChatResult");
+    expectedResponse.Set("Sender", "Maya");
+    expectedResponse.Set("Chat", "Hello");
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    messagesReceived[1].clear();
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    messagesReceived[0].clear();
+
+    // Maya leaves the room.
+    ws[1].Close();
+    {
+        std::unique_lock<decltype(wsMutex)> lock(wsMutex);
+        wsWaitCondition.wait(lock,
+                             [this] { return (!messagesReceived[0].empty() && wsClosed[1]); });
+    }
+
+    // Hatem peeks at the chat room member list.
+    message = Json::Value(Json::Value::Type::Object);
+    message.Set("Type", "GetUserNames");
+    ws[0].SendText(message.ToEncoding());
+    std::vector<Json::Value> expectedResponses;
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "Leave");
+    expectedResponse.Set("UserName", "Maya");
+    expectedResponses.push_back(expectedResponse);
+    expectedResponse = Json::Value(Json::Value::Type::Object);
+    expectedResponse.Set("Type", "UserNames");
+    expectedResponse.Set("UserNames", {"Hatem"});
+    expectedResponses.push_back(expectedResponse);
+    ASSERT_EQ(expectedResponses, messagesReceived[0]);
     messagesReceived[0].clear();
 }
