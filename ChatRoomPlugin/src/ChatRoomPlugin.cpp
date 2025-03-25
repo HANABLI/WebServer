@@ -382,10 +382,10 @@ extern "C" API void LoadPlugin(
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
     room.Start();
-    const auto unregistrationDelegate =
-        server->RegisterResource(space, [](std::shared_ptr<Http::IServer::Request> request,
-                                           std::shared_ptr<Http::Connection> connection)
-                                 { return room.AddUser(request, connection); });
+    const auto unregistrationDelegate = server->RegisterResource(
+        space, [](std::shared_ptr<Http::IServer::Request> request,
+                  std::shared_ptr<Http::Connection> connection, const std::string& trailer)
+        { return room.AddUser(request, connection); });
 
     unloadDelegate = [unregistrationDelegate]
     {

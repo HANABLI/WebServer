@@ -69,7 +69,7 @@ extern "C" API void LoadPlugin(
     const auto unregistrationDelegate = server->RegisterResource(
         space,
         [root](std::shared_ptr<Http::IServer::Request> request,
-               std::shared_ptr<Http::Connection> connection)
+               std::shared_ptr<Http::Connection> connection, const std::string& trailer)
         {
             const auto path =
                 StringUtils::Join({root, StringUtils::Join(request->target.GetPath(), "/")}, "/");

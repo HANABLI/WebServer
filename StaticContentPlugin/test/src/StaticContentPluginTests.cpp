@@ -97,7 +97,7 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_Load_Test) {
         unloadDelegate);
     const auto request = std::make_shared<Http::IServer::Request>();
     request->target.SetPath({"exemple.txt"});
-    const auto response = server.registredResourceDelegate(request, nullptr);
+    const auto response = server.registredResourceDelegate(request, nullptr, "");
     ASSERT_EQ("Hello", response->body);
     ASSERT_FALSE(unloadDelegate == nullptr);
 }
@@ -121,7 +121,7 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_checkforEtag_Test) {
     // of the test file.
     auto request = std::make_shared<Http::IServer::Request>();
     request->target.SetPath({"exemple.txt"});
-    auto response = server.registredResourceDelegate(request, nullptr);
+    auto response = server.registredResourceDelegate(request, nullptr, "");
     ASSERT_EQ(200, response->statusCode);
     ASSERT_TRUE(response->headers.HasHeader("ETag"));
     const auto etag = response->headers.GetHeaderValue("ETag");
@@ -131,7 +131,7 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_checkforEtag_Test) {
     request = std::make_shared<Http::IServer::Request>();
     request->target.SetPath({"exemple.txt"});
     request->headers.SetHeader("If-None-Match", etag);
-    response = server.registredResourceDelegate(request, nullptr);
+    response = server.registredResourceDelegate(request, nullptr, "");
     EXPECT_EQ(304, response->statusCode);
     EXPECT_EQ("Not Modified", response->status);
     EXPECT_TRUE(response->body.empty());
