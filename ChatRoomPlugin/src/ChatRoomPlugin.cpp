@@ -323,12 +323,17 @@ namespace
          *      This is the request to connect to the chat room.
          * @param[in] connection
          *      This is the connection on which the request was made.
+         * @param[in] trailer
+         *      This holds any characters that have already been received
+         *      by the server and come after the end of the request.
+         *      A handler that upgrades this connection might want to interpret
+         *      these characters whithin the context of the upgraded connection
          * @return
          *      The response to be returned to the client is returned.
          */
         std::shared_ptr<Http::Client::Response> AddUser(
             std::shared_ptr<Http::IServer::Request> request,
-            std::shared_ptr<Http::Connection> connection) {
+            std::shared_ptr<Http::Connection> connection, const std::string& trailer) {
             std::lock_guard<decltype(mutex)> lock(mutex);
             const auto response = std::make_shared<Http::Client::Response>();
             const auto sessionId = nextSessionId++;
@@ -337,7 +342,7 @@ namespace
                                     { ReceiveMessage(sessionId, data); });
             user.ws.SetCloseDelegate([this, sessionId](unsigned int code, const std::string& reason)
                                      { RemoveUser(sessionId, code, reason); });
-            if (!user.ws.OpenAsServer(connection, *request, *response))
+            if (!user.ws.OpenAsServer(connection, *request, *response, trailer))
             { (void)users.erase(sessionId); }
             return response;
         }
@@ -385,7 +390,7 @@ extern "C" API void LoadPlugin(
     const auto unregistrationDelegate = server->RegisterResource(
         space, [](std::shared_ptr<Http::IServer::Request> request,
                   std::shared_ptr<Http::Connection> connection, const std::string& trailer)
-        { return room.AddUser(request, connection); });
+        { return room.AddUser(request, connection, trailer); });
 
     unloadDelegate = [unregistrationDelegate]
     {
