@@ -10,6 +10,7 @@
 #include <crtdbg.h>
 #include <signal.h>
 #include <stdio.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <Http/Server.hpp>
 #include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
@@ -237,14 +238,17 @@ bool ConfigureAndStartServer(
     Http::Server& server,
     std::shared_ptr<HttpNetworkTransport::HttpServerNetworkTransport> transport,
     const Json::Value& configuration, const Environment& environment) {
+    Http::Server::MobilizationDependencies deps;
     uint16_t port = 0;
     auto timeKeeper = std::make_shared<TimeKeeper>();
-    Http::Server::MobilizationDependencies dep = {transport, port, timeKeeper};
+    deps.transport = transport;
+    deps.timeKeeper = timeKeeper;
     if (configuration.Has("port"))
-    { dep.port = (int)(configuration)["port"]; }
-    if (dep.port == 0)
-    { dep.port = DEFAULT_PORT; }
-    if (!server.Mobilize(dep))
+    { port = (int)(configuration)["port"]; }
+    if (port == 0)
+    { port = DEFAULT_PORT; }
+    server.SetConfigurationItem("Port", StringUtils::sprintf("%" PRIu16, port));
+    if (!server.Mobilize(deps))
     { return false; }
     return true;
 }
