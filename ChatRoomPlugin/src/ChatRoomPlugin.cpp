@@ -343,7 +343,12 @@ namespace
             user.ws.SetCloseDelegate([this, sessionId](unsigned int code, const std::string& reason)
                                      { RemoveUser(sessionId, code, reason); });
             if (!user.ws.OpenAsServer(connection, *request, *response, trailer))
-            { (void)users.erase(sessionId); }
+            {
+                (void)users.erase(sessionId);
+                response->statusCode = 200;
+                response->headers.SetHeader("Content-Type", "Text/plain");
+                response->body = "Try again, but next time use a WebSocket. thxbye!";
+            }
             return response;
         }
     } room;
@@ -386,6 +391,7 @@ extern "C" API void LoadPlugin(
     }
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
+
     room.Start();
     const auto unregistrationDelegate = server->RegisterResource(
         space, [](std::shared_ptr<Http::IServer::Request> request,

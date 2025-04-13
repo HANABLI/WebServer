@@ -531,3 +531,17 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameInTrailer_test) {
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
     messagesReceived[0].clear();
 }
+
+TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_ConnectionNotUpgraded__Test) {
+    const auto connection = std::make_shared<MockConnection>("mock-client");
+    std::string responseText;
+    connection->sendDataDelegate = [this, &responseText](const std::vector<uint8_t>& data)
+    { responseText += std::string(data.begin(), data.end()); };
+    const auto request = std::make_shared<Http::Server::Request>();
+    request->method = "GET";
+    (void)request->target.ParseFromString("");
+    const auto response = server.registredResourceDelegate(request, connection, "");
+    ASSERT_EQ(200, response->statusCode);
+    ASSERT_EQ("Text/plain", response->headers.GetHeaderValue("Content-Type"));
+    ASSERT_EQ("Try again, but next time use a WebSocket. thxbye!", response->body);
+}
