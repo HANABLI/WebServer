@@ -333,11 +333,18 @@ namespace
          */
         std::shared_ptr<Http::Client::Response> AddUser(
             std::shared_ptr<Http::IServer::Request> request,
-            std::shared_ptr<Http::Connection> connection, const std::string& trailer) {
+            std::shared_ptr<Http::Connection> connection, const std::string& trailer,
+            SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate) {
             std::lock_guard<decltype(mutex)> lock(mutex);
             const auto response = std::make_shared<Http::Client::Response>();
             const auto sessionId = nextSessionId++;
             auto& user = users[sessionId];
+            user.ws.SubscribeToDiagnostics(
+                [diagnosticMessageDelegate, sessionId](std::string senderName, size_t level,
+                                                       std::string reason) {
+                    diagnosticMessageDelegate(StringUtils::sprintf(" Session #%zu", sessionId),
+                                              level, reason);
+                });
             user.ws.SetTextDelegate([this, sessionId](const std::string& data)
                                     { ReceiveMessage(sessionId, data); });
             user.ws.SetCloseDelegate([this, sessionId](unsigned int code, const std::string& reason)
@@ -394,9 +401,10 @@ extern "C" API void LoadPlugin(
 
     room.Start();
     const auto unregistrationDelegate = server->RegisterResource(
-        space, [](std::shared_ptr<Http::IServer::Request> request,
-                  std::shared_ptr<Http::Connection> connection, const std::string& trailer)
-        { return room.AddUser(request, connection, trailer); });
+        space, [diagnosticMessageDelegate](std::shared_ptr<Http::IServer::Request> request,
+                                           std::shared_ptr<Http::Connection> connection,
+                                           const std::string& trailer)
+        { return room.AddUser(request, connection, trailer, diagnosticMessageDelegate); });
 
     unloadDelegate = [unregistrationDelegate]
     {
