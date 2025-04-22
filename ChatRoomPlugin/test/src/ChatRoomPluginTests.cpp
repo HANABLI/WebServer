@@ -194,6 +194,18 @@ struct ChatRoomPluginTests : public ::testing::Test
      * This store all messages received from the chat room.
      */
     std::vector<Json::Value> messagesReceived[NUM_MOCK_CLIENTS];
+
+    /**
+     * These are the diagnostic messages that have been received
+     * from the unit under test.
+     */
+    std::vector<std::string> diagnosticMessages;
+    /**
+     * This is the delegate obtained when subscribing
+     * to receive diagnostic messages from the unit under test.
+     * It's called to terminate the subscription.
+     */
+    SystemUtils::DiagnosticsSender::UnsubscribeDelegate diagnosticsUnsubscribeDelegate;
     // Methods
 
     void InitilizeClientWebsocket(size_t i) {
@@ -229,8 +241,11 @@ struct ChatRoomPluginTests : public ::testing::Test
         config.Set("space", CHAT_ROOM_PATH);
         LoadPlugin(
             &server, config,
-            [](std::string senderName, size_t level, std::string message)
-            { printf("[%s:%zu] %s\n", senderName.c_str(), level, message.c_str()); },
+            [this](std::string senderName, size_t level, std::string message)
+            {
+                diagnosticMessages.push_back(StringUtils::sprintf("%s[%zu]: %s", senderName.c_str(),
+                                                                  level, message.c_str()));
+            },
             unloadDelegate);
         for (size_t i = 0; i < NUM_MOCK_CLIENTS; ++i)
         {
@@ -269,12 +284,15 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserName_Test) {
               messagesReceived[0]);
     messagesReceived[0].clear();
     ws[0].SendText("{\"Type\": \"GetUserNames\"}");
+    ASSERT_EQ((std::vector<std::string>{" Session #1[1]: User name changed from '' to 'Hatem'"}),
+              diagnosticMessages);
     ASSERT_EQ(
         (std::vector<Json::Value>{
             Json::Value::FromEncoding("{\"Type\": \"UserNames\", \"UserNames\": [\"Hatem\"]}"),
         }),
         messagesReceived[0]);
     messagesReceived[0].clear();
+    diagnosticMessages.clear();
 }
 
 TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameTwice_Test) {
@@ -391,6 +409,7 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_TellSomeThings_Test) {
     expectedResponse.Set("UserNames", {"Hatem", "Maya"});
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
     messagesReceived[0].clear();
+    diagnosticMessages.clear();
 
     // Maya says some things.
     message = Json::Value(Json::Value::Type::Object);
@@ -401,7 +420,10 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_TellSomeThings_Test) {
     expectedResponse.Set("Type", "PostChatResult");
     expectedResponse.Set("Sender", "Maya");
     expectedResponse.Set("Chat", "Hello");
+    expectedResponse.Set("Time", "");
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    ASSERT_EQ((std::vector<std::string>{" Session #2[1]: User 'Maya' sent 'Hello' to the room"}),
+              diagnosticMessages);
     messagesReceived[1].clear();
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
     messagesReceived[0].clear();
@@ -452,11 +474,12 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
     expectedResponse.Set("Type", "PostChatResult");
     expectedResponse.Set("Sender", "Maya");
     expectedResponse.Set("Chat", "Hello");
+    expectedResponse.Set("Time", "");
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
     messagesReceived[1].clear();
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
     messagesReceived[0].clear();
-
+    diagnosticMessages.clear();
     // Maya leaves the room.
     ws[1].Close();
     {
@@ -464,7 +487,6 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
         wsWaitCondition.wait(lock,
                              [this] { return (!messagesReceived[0].empty() && wsClosed[1]); });
     }
-
     // Hatem peeks at the chat room member list.
     message = Json::Value(Json::Value::Type::Object);
     message.Set("Type", "GetUserNames");
@@ -477,6 +499,7 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "UserNames");
     expectedResponse.Set("UserNames", {"Hatem"});
+    expectedResponses.push_back(expectedResponse);
     expectedResponses.push_back(expectedResponse);
     ASSERT_EQ(expectedResponses, messagesReceived[0]);
     messagesReceived[0].clear();

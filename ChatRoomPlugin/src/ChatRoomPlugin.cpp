@@ -64,7 +64,28 @@ namespace
          * This indicate whether or not the user is connected to the room.
          */
         bool open = true;
+
+        /**
+         * These are the diagnostic sender name of the user.
+         */
+        std::string diagnosticSenderName;
+        /**
+         * This is the delegate obtained when subscribing
+         * to receive diagnostic messages from the unit under test.
+         * It's called to terminate the subscription.
+         */
+        SystemUtils::DiagnosticsSender::UnsubscribeDelegate wsDiagnosticsUnsubscribeDelegate;
     };
+
+    struct ChatMessage
+    {
+        std::string timestamp;
+        std::string sender;
+        std::string message;
+
+        bool operator<(const ChatMessage& other) const { return timestamp < other.timestamp; }
+    };
+
     /**
      * This represent the state of the chat room
      */
@@ -98,6 +119,11 @@ namespace
         bool usersHaveClosed = false;
 
         /**
+         * This indicates whether an user join the room with an user name.
+         */
+        bool userJoinRoom = false;
+
+        /**
          * These are the users currently connected to the chat room,
          * keyed by session Id.
          */
@@ -108,11 +134,23 @@ namespace
          * userName
          */
         std::map<std::string, Account> accounts;
+
+        /**
+         *
+         */
+        std::set<ChatMessage> chatLog;
         /**
          * This is the next session id that my be assigned to a new
          * user.
          */
         unsigned int nextSessionId = 1;
+
+        /**
+         * This is the delegate obtained when subscribing
+         * to receive diagnostic messages from the unit under test.
+         * It's called to terminate the subscription.
+         */
+        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticsMessageDelegate;
 
         // Methods
         /**
@@ -142,6 +180,31 @@ namespace
         }
 
         /**
+         * This method handles the "GetUserNames" message from users
+         * in the chat room.
+         *
+         * @param[in] userEntry
+         *      This is the entry of the user who sent the message.
+         */
+        void GetUsersName(std::map<unsigned int, User>::iterator userEntry) {
+            Json::Value response(Json::Value::Type::Object);
+            response.Set("Type", "UserNames");
+            std::set<std::string> userNamesSet;
+            for (const auto& user : users)
+            {
+                if (!user.second.userName.empty())
+                { userNamesSet.insert(user.second.userName); }
+            }
+            Json::Value userNames(Json::Value::Type::Array);
+            for (const auto& userName : userNamesSet)
+            {
+                { userNames.Add(userName); }
+            }
+            response.Set("UserNames", userNames);
+            userEntry->second.ws.SendText(response.ToEncoding());
+        }
+
+        /**
          * This is called in a separate thread to perform
          * housekeeping in the background for the chat room.
          */
@@ -151,7 +214,7 @@ namespace
             {
                 workerWakeCondition.wait_for(
                     lock, std::chrono::milliseconds(WORKER_POLLING_PERIOD_MILLISECONDS),
-                    [this] { return stopWorker || usersHaveClosed; });
+                    [this] { return stopWorker || usersHaveClosed || userJoinRoom; });
                 if (usersHaveClosed)
                 {
                     std::vector<User> closedUsers;
@@ -180,8 +243,13 @@ namespace
                                 response.Set("Type", "Leave");
                                 response.Set("UserName", userName);
                                 const auto responseToEncoding = response.ToEncoding();
-                                for (auto& user : users)
-                                { user.second.ws.SendText(responseToEncoding); }
+                                for (auto user = users.begin(); user != users.end();)
+                                {
+                                    user->second.ws.SendText(responseToEncoding);
+                                    if (user->second.open)
+                                    { GetUsersName(user); }
+                                    ++user;
+                                }
                             }
                         }
                     }
@@ -191,6 +259,15 @@ namespace
                         closedUsers.clear();
                         lock.lock();
                     }
+                }
+                if (userJoinRoom)
+                {
+                    for (auto user = users.begin(); user != users.end();)
+                    {
+                        GetUsersName(user);
+                        ++user;
+                    }
+                    userJoinRoom = false;
                 }
             }
         }
@@ -214,40 +291,55 @@ namespace
             if (!userName.empty() &&
                 (accountEntry == accounts.end() || accountEntry->second.password == password))
             {
-                userEntry->second.userName = message["UserName"];
+                const auto oldUserName = userEntry->second.userName;
+                userEntry->second.userName = userName;
                 auto& account = accounts[userName];
                 account.password = password;
                 response.Set("Success", true);
+                diagnosticsMessageDelegate(
+                    userEntry->second.diagnosticSenderName, 1,
+                    StringUtils::sprintf("User name changed from '%s' to '%s'", oldUserName.c_str(),
+                                         userName.c_str()));
             } else
             { response.Set("Success", false); }
             userEntry->second.ws.SendText(response.ToEncoding());
         }
-
         /**
-         * This method handles the "GetUserNames" message from users
-         * in the chat room.
          *
-         * @param[in] userEntry
-         *      This is the entry of the user who sent the message.
          */
-        void GetUsersName(std::map<unsigned int, User>::iterator userEntry) {
+        void JoinChatRoom(const Json::Value& message,
+                          std::map<unsigned int, User>::iterator userEntry) {
+            const std::string Sender = message["userSender"];
             Json::Value response(Json::Value::Type::Object);
-            response.Set("Type", "UserNames");
+
+            response.Set("Type", "JoinChatRoomResponse");
+            response.Set("Success", true);
+            Json::Value chatLogToSend(Json::Value::Type::Array);
+            for (const auto& chat : chatLog)
+            {
+                Json::Value chatObj(Json::Value::Type::Object);
+                chatObj.Set("Time", chat.timestamp);
+                chatObj.Set("Sender", chat.sender);
+                chatObj.Set("Chat", chat.message);
+                chatLogToSend.Add(chatObj);
+            }
+            response.Set("ChatLog", chatLogToSend);
+            Json::Value userNames(Json::Value::Type::Array);
             std::set<std::string> userNamesSet;
             for (const auto& user : users)
             {
                 if (!user.second.userName.empty())
                 { userNamesSet.insert(user.second.userName); }
             }
-            Json::Value userNames(Json::Value::Type::Array);
             for (const auto& userName : userNamesSet)
             {
                 { userNames.Add(userName); }
             }
             response.Set("UserNames", userNames);
             userEntry->second.ws.SendText(response.ToEncoding());
+            userJoinRoom = true;
+            workerWakeCondition.notify_all();
         }
-
         /**
          * This method handles the "Chat" message from
          * users in the chat room.
@@ -259,14 +351,23 @@ namespace
          */
         void Chat(const Json::Value& message, std::map<unsigned int, User>::iterator userEntry) {
             const std::string chat = message["Chat"];
+            const std::string timeIn = message["Time"];
             if (chat.empty())
             { return; }
+            ChatMessage msg = {timeIn, userEntry->second.userName, chat};
+            chatLog.insert(msg);
             Json::Value response(Json::Value::Type::Object);
             response.Set("Type", "PostChatResult");
             response.Set("Sender", userEntry->second.userName);
             response.Set("Chat", chat);
+            response.Set("Time", timeIn);
+            std::string respEncod = response.ToEncoding();
             for (auto& user : users)
-            { user.second.ws.SendText(response.ToEncoding()); }
+            { user.second.ws.SendText(respEncod); }
+            diagnosticsMessageDelegate(
+                userEntry->second.diagnosticSenderName, 1,
+                StringUtils::sprintf("User '%s' sent '%s' to the room",
+                                     userEntry->second.userName.c_str(), chat.c_str()));
         }
 
         /**
@@ -294,7 +395,10 @@ namespace
             {
                 GetUsersName(userEntry);
             } else if (message["Type"] == "PostChat" && message.Has("Chat"))
-            { Chat(message, userEntry); }
+            {
+                Chat(message, userEntry);
+            } else if (message["Type"] == "JoinChatRoom")
+            { JoinChatRoom(message, userEntry); }
         }
 
         /**
@@ -338,6 +442,12 @@ namespace
             const auto response = std::make_shared<Http::Client::Response>();
             const auto sessionId = nextSessionId++;
             auto& user = users[sessionId];
+            const auto diagnosticSenderName = StringUtils::sprintf(" Session #%zu", sessionId);
+            user.diagnosticSenderName = diagnosticSenderName;
+            user.wsDiagnosticsUnsubscribeDelegate = user.ws.SubscribeToDiagnostics(
+                [this, diagnosticSenderName](std::string senderName, size_t level,
+                                             std::string message)
+                { diagnosticsMessageDelegate(diagnosticSenderName, level, message); });
             user.ws.SetTextDelegate([this, sessionId](const std::string& data)
                                     { ReceiveMessage(sessionId, data); });
             user.ws.SetCloseDelegate([this, sessionId](unsigned int code, const std::string& reason)
@@ -392,6 +502,7 @@ extern "C" API void LoadPlugin(
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
 
+    room.diagnosticsMessageDelegate = diagnosticMessageDelegate;
     room.Start();
     const auto unregistrationDelegate = server->RegisterResource(
         space, [](std::shared_ptr<Http::IServer::Request> request,
@@ -405,6 +516,8 @@ extern "C" API void LoadPlugin(
         room.users.clear();
         room.accounts.clear();
         room.usersHaveClosed = false;
+        room.diagnosticsMessageDelegate = nullptr;
+        room.nextSessionId = 1;
     };
 }
 
