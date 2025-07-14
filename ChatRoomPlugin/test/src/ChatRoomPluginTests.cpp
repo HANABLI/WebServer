@@ -260,7 +260,11 @@ struct ChatRoomPluginTests : public ::testing::Test
         }
     }
 
-    virtual void TearDown() { unloadDelegate(); }
+    virtual void TearDown() {
+        unloadDelegate();
+        messagesReceived[0].clear();
+        messagesReceived[1].clear();
+    }
 };
 
 TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_Load_Test) {
@@ -286,11 +290,13 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserName_Test) {
     ws[0].SendText("{\"Type\": \"GetUserNames\"}");
     ASSERT_EQ((std::vector<std::string>{" Session #1[1]: User name changed from '' to 'Hatem'"}),
               diagnosticMessages);
-    ASSERT_EQ(
-        (std::vector<Json::Value>{
-            Json::Value::FromEncoding("{\"Type\": \"UserNames\", \"UserNames\": [\"Hatem\"]}"),
-        }),
-        messagesReceived[0]);
+    ASSERT_EQ((std::vector<Json::Value>{
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"Hatem\", \"UserNames\": [\"Hatem\"]}"),
+                  Json::Value::FromEncoding("{\"Type\":\"UserNames\", \"UserNames\": [\"Hatem\"]}"),
+              }),
+              messagesReceived[0]);
     messagesReceived[0].clear();
     diagnosticMessages.clear();
 }
@@ -318,7 +324,12 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameTwice_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "SetUserNameResult");
     expectedResponse.Set("Success", false);
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    ASSERT_EQ((std::vector<Json::Value>{
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"\", \"UserNames\": [\"Hatem\"]}"),
+                  expectedResponse}),
+              messagesReceived[1]);
     messagesReceived[1].clear();
     // Set userName for third client, trying to
     // grab the same userName as the first client,
@@ -333,7 +344,15 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameTwice_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "SetUserNameResult");
     expectedResponse.Set("Success", true);
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[2]);
+    ASSERT_EQ((std::vector<Json::Value>{
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"\", \"UserNames\": [\"Hatem\"]}"),
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"\", \"UserNames\": [\"Hatem\"]}"),
+                  expectedResponse}),
+              messagesReceived[2]);
     messagesReceived[2].clear();
     // get userNames list
     message = Json::Value(Json::Value::Type::Object);
@@ -342,7 +361,15 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameTwice_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "UserNames");
     expectedResponse.Set("UserNames", {"Hatem"});
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    ASSERT_EQ((std::vector<Json::Value>{
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"\", \"UserNames\": [\"Hatem\"]}"),
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"\", \"UserNames\": [\"Hatem\"]}"),
+                  expectedResponse}),
+              messagesReceived[1]);
     messagesReceived[1].clear();
 }
 
@@ -397,7 +424,12 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_TellSomeThings_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "SetUserNameResult");
     expectedResponse.Set("Success", true);
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    ASSERT_EQ((std::vector<Json::Value>{
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"\", \"UserNames\": [\"Hatem\"]}"),
+                  expectedResponse}),
+              messagesReceived[1]);
     messagesReceived[1].clear();
 
     // Check if users was in the room.
@@ -407,7 +439,15 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_TellSomeThings_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "UserNames");
     expectedResponse.Set("UserNames", {"Hatem", "Maya"});
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    ASSERT_EQ((std::vector<Json::Value>{
+                  Json::Value::FromEncoding(
+                      "{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                      "\"UserNameModified\",\"UserName\": \"Hatem\", \"UserNames\": [\"Hatem\"]}"),
+                  Json::Value::FromEncoding("{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                                            "\"UserNameModified\",\"UserName\": \"Hatem\", "
+                                            "\"UserNames\": [\"Hatem\", \"Maya\"]}"),
+                  expectedResponse}),
+              messagesReceived[0]);
     messagesReceived[0].clear();
     diagnosticMessages.clear();
 
@@ -421,7 +461,12 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_TellSomeThings_Test) {
     expectedResponse.Set("Sender", "Maya");
     expectedResponse.Set("Chat", "Hello");
     expectedResponse.Set("Time", "");
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    ASSERT_EQ((std::vector<Json::Value>{
+                  Json::Value::FromEncoding("{\"ChatLog\": [], \"Success\": true, \"Type\": "
+                                            "\"UserNameModified\",\"UserName\": \"Maya\", "
+                                            "\"UserNames\": [\"Hatem\", \"Maya\"]}"),
+                  expectedResponse}),
+              messagesReceived[1]);
     ASSERT_EQ((std::vector<std::string>{" Session #2[1]: User 'Maya' sent 'Hello' to the room"}),
               diagnosticMessages);
     messagesReceived[1].clear();
@@ -442,6 +487,7 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
     expectedResponse.Set("Success", true);
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
     messagesReceived[0].clear();
+    messagesReceived[1].clear();
     // Maya join the chat room.
     const std::string password2 = "PopOps";
     message = Json::Value(Json::Value::Type::Object);
@@ -452,8 +498,16 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "SetUserNameResult");
     expectedResponse.Set("Success", true);
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    ASSERT_EQ(
+        (std::vector<Json::Value>{
+            Json::Value::FromEncoding("{\"ChatLog\": [{\"Chat\": \"Hello\", \"Sender\":\"Maya\", "
+                                      "\"Time\":\"\"}], \"Success\": true, \"Type\": "
+                                      "\"UserNameModified\",\"UserName\": \"\" , "
+                                      "\"UserNames\": [\"Hatem\"]}"),
+            expectedResponse}),
+        messagesReceived[1]);
     messagesReceived[1].clear();
+    EXPECT_TRUE(messagesReceived[1].empty());
 
     // Check if users was in the room.
     message = Json::Value(Json::Value::Type::Object);
@@ -462,7 +516,18 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "UserNames");
     expectedResponse.Set("UserNames", {"Hatem", "Maya"});
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    ASSERT_EQ(
+        (std::vector<Json::Value>{
+            Json::Value::FromEncoding("{\"ChatLog\": [{\"Chat\": \"Hello\", \"Sender\":\"Maya\", "
+                                      "\"Time\":\"\"}], \"Success\": true, \"Type\": "
+                                      "\"UserNameModified\",\"UserName\": \"Hatem\" , "
+                                      "\"UserNames\": [\"Hatem\"]}"),
+            Json::Value::FromEncoding("{\"ChatLog\": [{\"Chat\": \"Hello\", \"Sender\":\"Maya\", "
+                                      "\"Time\":\"\"}], \"Success\": true, \"Type\": "
+                                      "\"UserNameModified\",\"UserName\": \"Hatem\" , "
+                                      "\"UserNames\": [\"Hatem\", \"Maya\"]}"),
+            expectedResponse}),
+        messagesReceived[0]);
     messagesReceived[0].clear();
 
     // Maya says some things.
@@ -475,7 +540,14 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
     expectedResponse.Set("Sender", "Maya");
     expectedResponse.Set("Chat", "Hello");
     expectedResponse.Set("Time", "");
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[1]);
+    ASSERT_EQ(
+        (std::vector<Json::Value>{
+            Json::Value::FromEncoding("{\"ChatLog\": [{\"Chat\": \"Hello\", \"Sender\":\"Maya\", "
+                                      "\"Time\":\"\"}], \"Success\": true, \"Type\": "
+                                      "\"UserNameModified\",\"UserName\": \"Maya\" , "
+                                      "\"UserNames\": [\"Hatem\", \"Maya\"]}"),
+            expectedResponse}),
+        messagesReceived[1]);
     messagesReceived[1].clear();
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
     messagesReceived[0].clear();
@@ -503,6 +575,7 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_LeaveTheRoom_Test) {
     expectedResponses.push_back(expectedResponse);
     ASSERT_EQ(expectedResponses, messagesReceived[0]);
     messagesReceived[0].clear();
+    EXPECT_TRUE(messagesReceived[0].empty());
 }
 
 TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameInTrailer_test) {
@@ -544,6 +617,7 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameInTrailer_test) {
     expectedResponse.Set("Success", true);
     ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
     messagesReceived[0].clear();
+    EXPECT_TRUE(messagesReceived[0].empty());
     // get userNames list
     message = Json::Value(Json::Value::Type::Object);
     message.Set("Type", "GetUserNames");
@@ -551,8 +625,17 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_SetUserNameInTrailer_test) {
     expectedResponse = Json::Value(Json::Value::Type::Object);
     expectedResponse.Set("Type", "UserNames");
     expectedResponse.Set("UserNames", {"Hatem"});
-    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
+    ASSERT_EQ(
+        (std::vector<Json::Value>{
+            Json::Value::FromEncoding(
+                "{\"ChatLog\": [{\"Chat\": \"Hello\", \"Sender\":\"Maya\", \"Time\":\"\"}, "
+                "{\"Chat\": \"Hello\", \"Sender\":\"Maya\", \"Time\":\"\"}], \"Success\": true, "
+                "\"Type\": \"UserNameModified\", \"UserName\": \"Hatem\" , \"UserNames\": "
+                "[\"Hatem\"]}"),
+            expectedResponse}),
+        messagesReceived[0]);
     messagesReceived[0].clear();
+    EXPECT_TRUE(messagesReceived[0].empty());
 }
 
 TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_ConnectionNotUpgraded__Test) {
@@ -567,4 +650,18 @@ TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_ConnectionNotUpgraded__Test) {
     ASSERT_EQ(200, response->statusCode);
     ASSERT_EQ("Text/plain", response->headers.GetHeaderValue("Content-Type"));
     ASSERT_EQ("Try again, but next time use a WebSocket. thxbye!", response->body);
+}
+
+TEST_F(ChatRoomPluginTests, ChatRoomPluginTests_ChangeUserName_Test) {
+    // Set the nick name to Toto initially
+    const std::string password = "xxxx";
+    auto message =
+        Json::Object({{"Type", "SetUserName"}, {"UserName", "Toto"}, {"Password", password}});
+    ws[0].SendText(message.ToEncoding());
+    Json::Value expectedResponse(Json::Value::Type::Object);
+
+    message = Json::Object({{"Type", "SetUserName"}, {"UserName", "Titi"}, {"Password", password}});
+    expectedResponse.Set("Type", "SetUserNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ((std::vector<Json::Value>{expectedResponse}), messagesReceived[0]);
 }
