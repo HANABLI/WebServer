@@ -11,6 +11,7 @@
 #include <SystemUtils/File.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
 #include <functional>
+#include <map>
 
 #ifdef _WIN32
 #    define API __declspec(dllimport)
@@ -35,15 +36,18 @@ struct MockServer : public Http::IServer
      * to be called to handel resource requests.
      */
     ResourceDelegate registredResourceDelegate;
+    /**
+     * This is a collection of delegate that the unit under test registered
+     * to be called to handel multi resources request.
+     */
+    std::map<std::string, ResourceDelegate> registredResourceDelegates;
 
     // Methods
 
     // IServer
 public:
     virtual std::string GetConfigurationItem(const std::string& key) override { return ""; }
-    virtual void SetConfigurationItem(const std::string& key, const std::string& value) override {
-        return;
-    }
+    virtual void SetConfigurationItem(const std::string& key, const std::string& value) override {}
     virtual SystemUtils::DiagnosticsSender::UnsubscribeDelegate SubscribeToDiagnostics(
         SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate delegate,
         size_t minLevel = 0) override {
@@ -54,6 +58,8 @@ public:
         ResourceDelegate resourceDelegate) override {
         registeredResourcesSubspacePath = resourceSubspacePath;
         registredResourceDelegate = resourceDelegate;
+        if (resourceSubspacePath.size() > 0)
+        { registredResourceDelegates[resourceSubspacePath[0]] = resourceDelegate; }
         return []() {};
     }
 };
@@ -135,4 +141,47 @@ TEST_F(StaticContentPluginTests, StaticContentPluginTest_checkforEtag_Test) {
     EXPECT_EQ(304, response->statusCode);
     EXPECT_EQ("Not Modified", response->status);
     EXPECT_TRUE(response->body.empty());
+}
+
+TEST_F(StaticContentPluginTests, ServeMultipleResourcesSpaces) {
+    const std::string firstResourceSpace = testAreaPath + "/first";
+    const std::string secondResourceSpace = testAreaPath + "/second";
+    ASSERT_TRUE(SystemUtils::File::CreateDirectory(firstResourceSpace));
+    ASSERT_TRUE(SystemUtils::File::CreateDirectory(secondResourceSpace));
+    SystemUtils::File firstTestFile(firstResourceSpace + "/hello.txt");
+    SystemUtils::File secondTestFile(secondResourceSpace + "/hello.txt");
+    (void)firstTestFile.OpenReadWrite();
+    (void)secondTestFile.OpenReadWrite();
+    firstTestFile.Write("Hello, World!", 13);
+    secondTestFile.Write("Hello, World!", 13);
+    firstTestFile.Close();
+    secondTestFile.Close();
+    MockServer server;
+    std::function<void()> unloadDelegate;
+    Json::Value config(Json::Value::Type::Object);
+    config.Set("spaces", Json::Array({Json::Object({
+                                          {"space", "/first"},
+                                          {"root", firstResourceSpace},
+                                      }),
+                                      Json::Object({
+                                          {"space", "/second"},
+                                          {"root", secondResourceSpace},
+                                      })}));
+    LoadPlugin(
+        &server, config,
+        [](std::string senderName, size_t level, std::string message)
+        { printf("[%s:%zu] %s\n", senderName.c_str(), level, message.c_str()); },
+        unloadDelegate);
+    ASSERT_FALSE(server.registredResourceDelegates.find("first") ==
+                 server.registredResourceDelegates.end());
+    ASSERT_FALSE(server.registredResourceDelegates.find("second") ==
+                 server.registredResourceDelegates.end());
+    auto request = std::make_shared<Http::IServer::Request>();
+    request->target.SetPath({"hello.txt"});
+    auto response = server.registredResourceDelegates["first"](request, nullptr, "");
+    EXPECT_EQ("Hello, World!", response->body);
+    request = std::make_shared<Http::IServer::Request>();
+    request->target.SetPath({"hello.txt"});
+    response = server.registredResourceDelegates["second"](request, nullptr, "");
+    EXPECT_EQ("Hello, World!", response->body);
 }
