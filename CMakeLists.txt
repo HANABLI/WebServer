@@ -33,7 +33,9 @@ target_link_libraries(${this} PUBLIC
     SystemUtils
     StringUtils
     WebSocket
+    Sha1
 )
 
 add_subdirectory(StaticContentPlugin)
 add_subdirectory(ChatRoomPlugin)
+add_subdirectory(MqttPlugin)
