@@ -27,6 +27,8 @@ namespace
      * in the worker thread of the chat room.
      */
     constexpr unsigned int WORKER_POLLING_PERIOD_MILLISECONDS = 50;
+
+    constexpr unsigned int PING_POLLING_PERIOD_MILLISECONDS = 50000;
     /**
      *
      */
@@ -236,6 +238,11 @@ namespace
         bool unsubscribeTopic = false;
 
         /**
+         * This indicates whether an endpoint ping the broker.
+         */
+        bool ping = false;
+
+        /**
          * This is the broker configurations loaded when the plugin start.
          */
         BrockerConfig mqttConfiguration;
@@ -361,14 +368,19 @@ namespace
 
         void Worker() {
             std::unique_lock<decltype(mutex)> lock(mutex);
+            int pingPollingPeriod = PING_POLLING_PERIOD_MILLISECONDS;
             while (!stopWorker)
             {
                 /* code */
                 workerWakeCondition.wait_for(
                     lock, std::chrono::milliseconds(WORKER_POLLING_PERIOD_MILLISECONDS),
-                    [this] {
+                    [this, &pingPollingPeriod]
+                    {
+                        pingPollingPeriod -= WORKER_POLLING_PERIOD_MILLISECONDS;
+                        if (pingPollingPeriod < 0)
+                        { ping = true; }
                         return stopWorker || endPointHaveClosed || initialConnectPending ||
-                               !pendingCommandes.empty();
+                               !pendingCommandes.empty() || ping;
                     });
                 if (stopWorker)
                 {
@@ -377,12 +389,20 @@ namespace
                     break;
                 }
 
+                if (mqttConnected && ping)
+                {
+                    lock.unlock();
+                    Ping();
+                    ping = false;
+                    pingPollingPeriod = PING_POLLING_PERIOD_MILLISECONDS;
+                    lock.lock();
+                }
+
                 if (initialConnectPending && brokerConfigLoaded && !mqttConnected)
                 {
                     initialConnectPending = false;
                     lock.unlock();
                     DoInitialConnect();
-
                     lock.lock();
                 }
 
@@ -514,6 +534,53 @@ namespace
                 }
             }
         }
+
+        void Ping() {
+            auto transaction = mqttClient->Ping(mqttConfiguration.host, mqttConfiguration.port);
+            if (!transaction)
+            {
+                diagnosticsMessageDelegate(
+                    "MqttClientPlugin", SystemUtils::DiagnosticsSender::Levels::ERROR,
+                    "Ping() return null. Check transport/timekeeper/mobilize;");
+                return;
+            }
+            // transaction->SetCompletionDelegate(
+            //     [this](std::vector<MqttV5::ReasonCode>& reasons)
+            //     {
+            //         std::lock_guard<std::mutex> g(mutex);
+            //         bool ok =
+            //             !reasons.empty() && reasons.back() ==
+            //             MqttV5::Storage::ReasonCode::Success;
+            //         mqttConnected = ok;
+            //         diagnosticsMessageDelegate("MqttClientPlugin",
+            //                                    ok ? SystemUtils::DiagnosticsSender::Levels::INFO
+            //                                       :
+            //                                       SystemUtils::DiagnosticsSender::Levels::ERROR,
+            //                                    ok ? "Mqtt client connected to the broker."
+            //                                       : "Mqtt client connection failed");
+            //     });
+            if (transaction->transactionState ==
+                MqttV5::IMqttV5Client::Transaction::State::WaitingForResult)
+            {
+                if (transaction->AwaitCompletion(
+                        std::chrono::milliseconds(mqttConfiguration.connectTimeOut)))
+                {
+                    switch (transaction->transactionState)
+                    {
+                    case MqttV5::IMqttV5Client::Transaction::State::Success:
+                        diagnosticsMessageDelegate("MqttClientPlugin", 3,
+                                                   "Pong Response Received Successfully.");
+                        break;
+                    case MqttV5::IMqttV5Client::Transaction::State::ShunkedPacket:
+                        diagnosticsMessageDelegate("MqttClientPlugin", 2, "ShunkedPacket.");
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+        }
+
         void HandleSubscribeCommand(EndPointCommande cmd) {
             auto transcation =
                 mqttClient->Subscribe(cmd.topic.c_str(), cmd.retainHandling, cmd.withAutoFeadBack,
@@ -688,6 +755,7 @@ namespace
             { return; }
             endPoint->second->ws->Close(code, reason);
             endPoint->second->connected = false;
+            mqttPoints.erase(endPoint);
             endPointHaveClosed = true;
             workerWakeCondition.notify_all();
         }
@@ -732,7 +800,8 @@ namespace
             const auto response = std::make_shared<Http::Client::Response>();
             const auto sessionId = nextSessionId++;
             auto mqttPoint = std::make_shared<MqttPoint>();
-            mqttPoints[sessionId] = mqttPoint;
+            mqttPoint->ws = std::make_unique<WebSocket::WebSocket>();
+            mqttPoints.emplace(sessionId, mqttPoint);
             const auto diagnosticSenderName = StringUtils::sprintf("Session #%zu", sessionId);
             mqttPoint->diagnosticSenderName = diagnosticSenderName;
             mqttPoint->wsDiagnosticsUnsubscribeDelegate = mqttPoint->ws->SubscribeToDiagnostics(
