@@ -15,6 +15,7 @@ set(Headers
     include/Models/Core/Device.hpp
     include/Models/Core/IoTDevice.hpp
     include/Models/Auth/User.hpp
+    include/Models/Auth/Tenant.hpp
     include/Models/IoTDevices/MqttDevice.hpp
     include/Models/Data/MqttTopic.hpp
     include/Models/Servers/Modbus.hpp
@@ -30,6 +31,7 @@ set(Sources
     src/Core/Server.cpp
     src/Core/IoTDevice.cpp
     src/Auth/User.cpp
+    src/Auth/Tenant.cpp
     src/IoTDevices/MqttDevice.cpp
     src/Data/MqttTopic.cpp
     src/Servers/Modbus.cpp
