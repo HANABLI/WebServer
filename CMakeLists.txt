@@ -33,9 +33,22 @@ target_link_libraries(${this} PUBLIC
     SystemUtils
     StringUtils
     WebSocket
+    PgClient
     Sha1
+    UuidV7
+    Base32
 )
 
+add_subdirectory(AuthSigninPlugin)
+add_subdirectory(AuthLoginPlugin)
 add_subdirectory(StaticContentPlugin)
 add_subdirectory(ChatRoomPlugin)
 add_subdirectory(MqttPlugin)
+add_subdirectory(Models)
+add_subdirectory(Factory)
+add_subdirectory(Repositories)
+add_subdirectory(Managers)
+add_subdirectory(Topology)
+add_subdirectory(Commands)
+add_subdirectory(Auth)
+add_subdirectory(AuthService)
