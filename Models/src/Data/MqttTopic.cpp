@@ -24,9 +24,8 @@ namespace FalcataIoTServer
     };
 
     MqttTopic::MqttTopic() : CoreObject(), impl_(std::make_unique<Impl>()) {}
-    MqttTopic::MqttTopic(const Json::Value& j) : CoreObject(), impl_(std::make_unique<Impl>()) {
-        FromJson(j);
-    }
+    MqttTopic::MqttTopic(const Json::Value& j) : MqttTopic() { FromJson(j); }
+    MqttTopic::~MqttTopic() noexcept = default;
 
     std::shared_ptr<MqttV5::SubscribeTopic> MqttTopic::BuildTopic() const {
         const auto topic = std::make_shared<MqttV5::SubscribeTopic>(
