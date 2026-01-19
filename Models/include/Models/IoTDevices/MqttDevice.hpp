@@ -13,7 +13,7 @@ namespace FalcataIoTServer
     {
         // Life cycle managment
     public:
-        ~MqttDevice() noexcept = default;
+        ~MqttDevice() noexcept;
         MqttDevice(const MqttDevice&) = delete;
         MqttDevice(MqttDevice&&) noexcept = default;
         MqttDevice& operator=(const MqttDevice&) = delete;

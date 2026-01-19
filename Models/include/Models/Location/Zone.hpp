@@ -12,7 +12,7 @@ namespace FalcataIoTServer
     {
         // Life cycle managment
     public:
-        ~Zone() noexcept = default;
+        ~Zone() noexcept;
         Zone(const Zone&) = delete;
         Zone(Zone&&) noexcept = default;
         Zone& operator=(const Zone&) = delete;

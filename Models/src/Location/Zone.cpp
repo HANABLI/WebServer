@@ -26,6 +26,7 @@ namespace FalcataIoTServer
     Zone::Zone(const Json::Value& j) : CoreObject(), impl_(std::make_unique<Impl>()) {
         FromJson(j);
     }
+    Zone::~Zone() noexcept = default;
 
     const std::string& Zone::GetSiteId() const { return impl_->siteId; }
     void Zone::SetSiteId(const std::string& v) { impl_->siteId = v; }

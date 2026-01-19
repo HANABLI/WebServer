@@ -16,6 +16,7 @@ namespace FalcataIoTServer
                            std::string protocol, bool enabled, std::string zoneId) :
         IoTDevice(id, serverId, name, kind, protocol, enabled, zoneId),
         mqttDevice_(std::make_unique<Impl>()) {}
+    MqttDevice::~MqttDevice() noexcept = default;
 
     const std::set<std::shared_ptr<MqttTopic>> MqttDevice::GetTopics() const {
         return mqttDevice_->topics;

@@ -12,7 +12,7 @@ namespace FalcataIoTServer
     class Site final : public CoreObject, public IJsonSerializable
     {
     public:
-        ~Site() noexcept = default;
+        ~Site() noexcept;
         Site(const Site&) = delete;
         Site(Site&&) noexcept = default;
         Site& operator=(const Site&) = delete;

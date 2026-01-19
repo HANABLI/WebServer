@@ -12,7 +12,7 @@ namespace FalcataIoTServer
     {
         // Life cycle managment
     public:
-        ~MqttBroker() noexcept = default;
+        ~MqttBroker() noexcept;
         MqttBroker(const MqttBroker&) = delete;
         MqttBroker(MqttBroker&&) noexcept = default;
         MqttBroker& operator=(const MqttBroker&) = delete;

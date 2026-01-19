@@ -111,6 +111,8 @@ namespace FalcataIoTServer
                std::move(enabled)),
         broker_(std::make_unique<Impl>()) {}
 
+    MqttBroker::~MqttBroker() noexcept = default;
+
     void MqttBroker::AttachClient(std::shared_ptr<MqttV5::MqttClient>& client) {
         if (broker_->client.lock())
         { return; }
