@@ -103,7 +103,7 @@ struct Plugin
      *
      */
     void Plugin::Load(
-        Http::Server& server, bool needsToLoad, const std::string& pluginsRunTimePath,
+        Http::Server& server, bool& needsToLoad, const std::string& pluginsRunTimePath,
         SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate);
 
     /**

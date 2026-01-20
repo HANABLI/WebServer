@@ -61,7 +61,7 @@ void Plugin::Unload(
  *
  */
 void Plugin::Load(
-    Http::Server& server, bool needsToLoad, const std::string& pluginsRunTimePath,
+    Http::Server& server, bool& needsToLoad, const std::string& pluginsRunTimePath,
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate) {
     diagnosticMessageDelegate("", 0,
                               StringUtils::sprintf("Copying plugin '%s'", moduleName.c_str()));
