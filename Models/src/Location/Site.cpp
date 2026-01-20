@@ -24,9 +24,7 @@ namespace FalcataIoTServer
     };
 
     Site::Site() : CoreObject(), impl_(std::make_unique<Impl>()) {}
-    Site::Site(const Json::Value& j) : CoreObject(), impl_(std::make_unique<Impl>()) {
-        FromJson(j);
-    }
+    Site::Site(const Json::Value& j) : Site() { FromJson(j); }
     Site::~Site() noexcept = default;
 
     const std::string& Site::GetName() const { return impl_->name; }
