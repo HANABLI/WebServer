@@ -4,7 +4,7 @@
  * @copyright © 2025 by Hatem Nabli.
  */
 
-#include <Commands/CommandDispatsher.hpp>
+#include <Commands/CommandDispatcher.hpp>
 
 namespace FalcataIoTServer
 {
