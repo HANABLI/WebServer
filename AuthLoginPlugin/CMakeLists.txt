@@ -2,7 +2,7 @@
 # @brief This is the build configuration of AuthLoginPlugin.
 # @copyright © 2026 by Hatem Nabli.
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.20)
 set(This AuthLoginPlugin)
 
 set(Sources
