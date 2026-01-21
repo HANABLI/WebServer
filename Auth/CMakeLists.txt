@@ -23,10 +23,21 @@ set(Sources
 
 add_library(${this} STATIC ${Headers} ${Sources})
 set_target_properties(${this} PROPERTIES FOLDER Libraries)
-# libsodium via vcpkg (or system package)
-find_package(unofficial-sodium CONFIG REQUIRED)
+# ---- libsodium (OS-aware) ----
+if (WIN32)
+    # Windows → vcpkg
+    find_package(unofficial-sodium CONFIG REQUIRED)
+    target_link_libraries(${this} PUBLIC unofficial-sodium::sodium)
 
-target_link_libraries(${this} PUBLIC unofficial-sodium::sodium)
+elseif (UNIX)
+    # Linux / macOS → system package
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+
+    target_include_directories(${this} PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+    target_link_libraries(${this} PUBLIC ${LIBSODIUM_LIBRARIES})
+endif()
+
 # find_path(LIBSODIUM_INCLUDE_DIR sodium.h
 #   HINTS
 #     "C:/Users/ADMIN/Documents/3_Dev/vcpkg/packages/libsodium_x64-windows/include"
