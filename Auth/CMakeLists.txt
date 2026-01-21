@@ -23,23 +23,27 @@ set(Sources
 
 add_library(${this} STATIC ${Headers} ${Sources})
 set_target_properties(${this} PROPERTIES FOLDER Libraries)
-find_path(LIBSODIUM_INCLUDE_DIR sodium.h
-  HINTS
-    "C:/Users/ADMIN/Documents/3_Dev/vcpkg/packages/libsodium_x64-windows/include"
-)
+# libsodium via vcpkg (or system package)
+find_package(unofficial-sodium CONFIG REQUIRED)
 
-find_library(LIBSODIUM_LIBRARY NAMES libsodium
-  HINTS
-    "C:/Users/ADMIN/Documents/3_Dev/vcpkg/packages/libsodium_x64-windows/lib"
-)
+target_link_libraries(${this} PUBLIC unofficial-sodium::sodium)
+# find_path(LIBSODIUM_INCLUDE_DIR sodium.h
+#   HINTS
+#     "C:/Users/ADMIN/Documents/3_Dev/vcpkg/packages/libsodium_x64-windows/include"
+# )
 
-if (LIBSODIUM_INCLUDE_DIR AND LIBSODIUM_LIBRARY)
-  message(STATUS "Found sodium include: ${LIBSODIUM_INCLUDE_DIR}, lib: ${LIBSODIUM_LIBRARY}")
-  target_include_directories(Auth PUBLIC ${LIBSODIUM_INCLUDE_DIR})
-  target_link_libraries(Auth PUBLIC ${LIBSODIUM_LIBRARY})
-else()
-  message(FATAL_ERROR "sodium (sodium.h / libsodium) not found. Use vcpkg to install libsodium.")
-endif()
+# find_library(LIBSODIUM_LIBRARY NAMES libsodium
+#   HINTS
+#     "C:/Users/ADMIN/Documents/3_Dev/vcpkg/packages/libsodium_x64-windows/lib"
+# )
+
+# if (LIBSODIUM_INCLUDE_DIR AND LIBSODIUM_LIBRARY)
+#   message(STATUS "Found sodium include: ${LIBSODIUM_INCLUDE_DIR}, lib: ${LIBSODIUM_LIBRARY}")
+#   target_include_directories(Auth PUBLIC ${LIBSODIUM_INCLUDE_DIR})
+#   target_link_libraries(Auth PUBLIC ${LIBSODIUM_LIBRARY})
+# else()
+#   message(FATAL_ERROR "sodium (sodium.h / libsodium) not found. Use vcpkg to install libsodium.")
+# endif()
 
 target_include_directories(${this} PUBLIC include)
 
