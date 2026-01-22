@@ -17,9 +17,9 @@ set(Headers
     include/Models/Auth/Tenant.hpp
     include/Models/IoTDevices/MqttDevice.hpp
     include/Models/Data/MqttTopic.hpp
-    include/Models/Servers/Modbus.hpp
+    #include/Models/Servers/Modbus.hpp
     include/Models/Servers/MqttBroker.hpp
-    include/Models/Servers/OpcUaServer.hpp
+    #include/Models/Servers/OpcUaServer.hpp
     include/Models/Location/Site.hpp
     include/Models/Location/Zone.hpp
 )
@@ -33,9 +33,9 @@ set(Sources
     src/Auth/Tenant.cpp
     src/IoTDevices/MqttDevice.cpp
     src/Data/MqttTopic.cpp
-    src/Servers/Modbus.cpp
+    #src/Servers/Modbus.cpp
     src/Servers/MqttBroker.cpp
-    src/Servers/OpcUaServer.cpp
+    #src/Servers/OpcUaServer.cpp
     src/Location/Site.cpp
     src/Location/Zone.cpp
 )
