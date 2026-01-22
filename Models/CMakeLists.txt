@@ -10,6 +10,7 @@ set(Headers
     include/Models/Core/CoreObject.hpp
     include/Models/Core/Event.hpp
     include/Models/Core/Server.hpp
+    include/Models/Core/Protocol.hpp
     include/Models/Core/IDevice.hpp
     include/Models/Core/Device.hpp
     include/Models/Core/IoTDevice.hpp
