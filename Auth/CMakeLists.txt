@@ -24,19 +24,23 @@ set(Sources
 add_library(${this} STATIC ${Headers} ${Sources})
 set_target_properties(${this} PROPERTIES FOLDER Libraries)
 # ---- libsodium (OS-aware) ----
-if (WIN32)
-    # Windows → vcpkg
-    find_package(unofficial-sodium CONFIG REQUIRED)
-    target_link_libraries(${this} PUBLIC unofficial-sodium::sodium)
+# ---- libsodium ----
+if(WIN32)
+  # With vcpkg toolchain enabled, this will search vcpkg prefixes.
+  find_path(LIBSODIUM_INCLUDE_DIR sodium.h REQUIRED)
+  find_library(LIBSODIUM_LIBRARY NAMES sodium libsodium REQUIRED)
 
-elseif (UNIX)
-    # Linux / macOS → system package
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+  message(STATUS "Found libsodium include: ${LIBSODIUM_INCLUDE_DIR}, lib: ${LIBSODIUM_LIBRARY}")
+  target_include_directories(${this} PUBLIC ${LIBSODIUM_INCLUDE_DIR})
+  target_link_libraries(${this} PUBLIC ${LIBSODIUM_LIBRARY})
 
-    target_include_directories(${this} PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
-    target_link_libraries(${this} PUBLIC ${LIBSODIUM_LIBRARIES})
+else()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+  target_include_directories(${this} PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+  target_link_libraries(${this} PUBLIC ${LIBSODIUM_LIBRARIES})
 endif()
+
 
 # find_path(LIBSODIUM_INCLUDE_DIR sodium.h
 #   HINTS
