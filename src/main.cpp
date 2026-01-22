@@ -7,7 +7,9 @@
  * © 2024 by Hatem Nabli
  */
 #define _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
+#ifdef _WIN32
+#    include <crtdbg.h>
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include <inttypes.h>

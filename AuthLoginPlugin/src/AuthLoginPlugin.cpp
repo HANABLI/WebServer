@@ -130,12 +130,15 @@ extern "C" API void LoadPlugin(Http::IServer* server, Json::Value configuration,
                     {
                         const auto body = Json::Value::FromEncoding(request->body);
                         const std::string tenantId =
-                            body.Has("tenant_id") ? body["tenant_id"]
-                                                  : request->headers.GetHeaderValue("X-Tenant-Id");
+                            body.Has("tenant_id")
+                                ? body["tenant_id"]
+                                : Json::Value::FromEncoding(
+                                      request->headers.GetHeaderValue("X-Tenant-Id"));
                         const std::string tenantSlug =
                             body.Has("tanant_slug")
                                 ? body["tenant_slug"]
-                                : request->headers.GetHeaderValue("X-Tenant-Slug");
+                                : Json::Value::FromEncoding(
+                                      request->headers.GetHeaderValue("X-Tenant-Slug"));
                         const std::string username = body["user_name"];
                         const std::string password = body["password"];
                         const std::string totp = body.Has("totp") ? body["totp"] : "";
