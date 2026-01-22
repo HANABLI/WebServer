@@ -9,7 +9,6 @@ set(Headers
     include/Models/Core/IJsonSerialisable.hpp
     include/Models/Core/CoreObject.hpp
     include/Models/Core/Event.hpp
-    include/Models/Core/Protocol.hpp
     include/Models/Core/Server.hpp
     include/Models/Core/IDevice.hpp
     include/Models/Core/Device.hpp
@@ -41,7 +40,7 @@ set(Sources
     src/Location/Zone.cpp
 )
 
-add_library(${this} STATIC ${Headers} ${Sources})
+add_library(${this} STATIC  ${Sources} ${Headers})
 set_target_properties(${this} PROPERTIES
     FOLDER Libraries
 )
