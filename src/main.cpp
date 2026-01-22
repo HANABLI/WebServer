@@ -265,10 +265,10 @@ void MonitorServer(
     SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate) {
     std::string pluginsImagePath = environment.pluginsImagePath;
     if (configuration.Has("plugins-image"))
-    { pluginsImagePath = configuration["plugins-image"]; }
+    { pluginsImagePath = static_cast<std::string>(configuration["plugins-image"]); }
     std::string pluginsRunTimePath = environment.runtimePluginPath;
     if (configuration.Has("plugins-runtime"))
-    { pluginsRunTimePath = configuration["plugins-runtime"]; }
+    { pluginsRunTimePath = static_cast<std::string>(configuration["plugins-runtime"]); }
     std::map<std::string, std::shared_ptr<Plugin>> plugins;
     const auto pluginsEntries = configuration["plugins"];
     const auto pluginsEnabled = configuration["plugins-enabled"];

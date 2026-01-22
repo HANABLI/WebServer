@@ -71,7 +71,7 @@ struct Plugin
      * @param[in] runtimeFileName
      *      This is the plug in runtime file name.
      */
-    Plugin::Plugin(std::string& imageFileName, std::string& runtimeFileName) :
+    Plugin(const std::string& imageFileName, const std::string& runtimeFileName) :
         pluginImageFile(imageFileName), pluginRuntimeFile(runtimeFileName) {}
 
     /**
@@ -102,9 +102,8 @@ struct Plugin
      *      This is the function delegate to call to publish any diagnostic message.
      *
      */
-    void Plugin::Load(
-        Http::Server& server, bool& needsToLoad, const std::string& pluginsRunTimePath,
-        SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate);
+    void Load(Http::Server& server, bool& needsToLoad, const std::string& pluginsRunTimePath,
+              SystemUtils::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate);
 
     /**
      * This method is used to cleanly unload the plug-in

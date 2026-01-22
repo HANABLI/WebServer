@@ -8,7 +8,6 @@
 #include <Models/Core/Device.hpp>
 #include <Models/Core/IoTDevice.hpp>
 #include <Models/Core/CoreObject.hpp>
-#include <Models/Core/Protocol.hpp>
 #include <MqttV5/MqttClient.hpp>
 
 #include <cstdint>
