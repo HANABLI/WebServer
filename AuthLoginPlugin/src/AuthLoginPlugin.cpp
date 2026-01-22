@@ -74,7 +74,7 @@ extern "C" API void LoadPlugin(Http::IServer* server, Json::Value configuration,
     authLoginPlugin.pg = std::make_shared<Postgresql::PgClient>();
     authLoginPlugin.authSrv = std::make_shared<FalcataIoTServer::AuthServiceHs256>(configuration);
     Auth::Set(authLoginPlugin.authSrv);
-    authLoginPlugin.pgConninfo = configuration["PgConninfo"];
+    authLoginPlugin.pgConninfo = std::string(configuration["PgConninfo"]);
     if (configuration.Has("Spaces") &&
         configuration["Spaces"].GetType() == Json::Value::Type::Array)
     {
