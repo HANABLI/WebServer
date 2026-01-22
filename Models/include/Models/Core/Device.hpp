@@ -21,24 +21,24 @@ namespace FalcataIoTServer
         ~Device() override = default;
         Device() = default;
 
-        const std::string Device::GetId() const override { return self().Uuid_s(); }
-        void Device::SetId(const std::string& id) override { self().UuidFromString(id); }
+        const std::string GetId() const override { return self().Uuid_s(); }
+        void SetId(const std::string& id) override { self().UuidFromString(id); }
 
-        const std::string Device::GetName() const override { return self().impl_->name; }
-        void Device::SetName(const std::string& name) override { self().impl_->name = name; }
+        const std::string GetName() const override { return self().impl_->name; }
+        void SetName(const std::string& name) override { self().impl_->name = name; }
 
         // "kind" = catégorie fonctionnelle (server, sensor, gateway, etc.)
-        const std::string Device::GetKind() const override { return self().impl_->kind; }
+        const std::string GetKind() const override { return self().impl_->kind; }
 
         // "protocol" = mqtt, opcua, modbus-tcp…
-        const std::string Device::GetProtocol() const override { return self().impl_->protocol; }
+        const std::string GetProtocol() const override { return self().impl_->protocol; }
 
         // Actif / inactif
-        bool Device::IsEnabled() const override { return self().impl_->enabled; }
-        void Device::SetEnabled(bool enabled) override { self().impl_->enabled = enabled; }
+        bool IsEnabled() const override { return self().impl_->enabled; }
+        void SetEnabled(bool enabled) override { self().impl_->enabled = enabled; }
 
         // Sérialisation JSON pour ton API REST
-        Json::Value Device::ToJson() const override {
+        Json::Value ToJson() const override {
             const auto& impl = self().impl_;
             Json::Value device(Json::Value::Type::Object);
             device.Set("id", self().Uuid_s());
@@ -50,7 +50,7 @@ namespace FalcataIoTServer
             return device;
         }
 
-        void Device::FromJson(const Json::Value& json) override {
+        void FromJson(const Json::Value& json) override {
             auto& impl = self().impl_;
 
             if (json.Has("id"))
