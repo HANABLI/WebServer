@@ -90,6 +90,7 @@ namespace
     {
         CommandeType type;
         unsigned int sessionId;
+        std::string brokerId;
         std::string topic;
         MqttV5::QoSDelivery qos;
         MqttV5::RetainHandling retainHandling;
@@ -380,7 +381,7 @@ namespace
                         if (pingPollingPeriod < 0)
                         { ping = true; }
                         return stopWorker || endPointHaveClosed || initialConnectPending ||
-                               !pendingCommandes.empty() || ping;
+                               !pendingCommandes.empty() || ping || endPointJoinServer;
                     });
                 if (stopWorker)
                 {
@@ -389,12 +390,14 @@ namespace
                     break;
                 }
 
-                if (mqttConnected && ping)
+                if (mqttConnected && (ping || endPointJoinServer))
                 {
+                    ping = false;
+                    if (endPointJoinServer)
+                    { endPointJoinServer = false; }
+                    pingPollingPeriod = PING_POLLING_PERIOD_MILLISECONDS;
                     lock.unlock();
                     Ping();
-                    ping = false;
-                    pingPollingPeriod = PING_POLLING_PERIOD_MILLISECONDS;
                     lock.lock();
                 }
 
@@ -403,6 +406,21 @@ namespace
                     initialConnectPending = false;
                     lock.unlock();
                     DoInitialConnect();
+                    lock.lock();
+                }
+
+                // 3) Handles SUB/UNSUB Transaction
+                if (!pendingCommandes.empty() && mqttConnected && mqttClient)
+                {
+                    EndPointCommande cmd = pendingCommandes.front();
+                    pendingCommandes.pop();
+                    lock.unlock();
+                    if (cmd.type == CommandeType::Subscribe)
+                    {
+                        HandleSubscribeCommand(cmd);
+                    } else if (cmd.type == CommandeType::Unsubscribe)
+                    { HandleUnSubscribeCommand(cmd); }
+
                     lock.lock();
                 }
 
@@ -424,21 +442,6 @@ namespace
                     {
                         lock.unlock();
                         closedEndPoints.clear();
-                        lock.lock();
-                    }
-
-                    // 3) Handles SUB/UNSUB Transaction
-                    while (!pendingCommandes.empty() && mqttConnected && mqttClient)
-                    {
-                        EndPointCommande cmd = pendingCommandes.front();
-                        pendingCommandes.pop();
-                        lock.unlock();
-                        if (cmd.type == CommandeType::Subscribe)
-                        {
-                            HandleSubscribeCommand(cmd);
-                        } else if (cmd.type == CommandeType::Unsubscribe)
-                        { HandleUnSubscribeCommand(cmd); }
-
                         lock.lock();
                     }
                 }
@@ -468,7 +471,7 @@ namespace
             std::string userName;
             if (!mqttConfiguration.userName.empty())
             { userName = mqttConfiguration.userName; }
-            MqttV5::DynamicBinaryData password;
+            MqttV5::Common::DynamicBinaryData password;
             Utf8::Utf8 utf;
             if (!mqttConfiguration.password.empty())
             {
@@ -476,7 +479,7 @@ namespace
                 password.data = encodedPass.data();
                 password.size = static_cast<uint32_t>(encodedPass.size());
             }
-            MqttV5::DynamicBinaryData will;
+            MqttV5::Common::DynamicBinaryData will;
             if (!mqttConfiguration.willPayload.empty())
             {
                 auto encodedWill = utf.Encode(Utf8::AsciiToUnicode(mqttConfiguration.willPayload));
@@ -489,10 +492,10 @@ namespace
             mqttConfiguration.props->initialize();
 
             auto transaction = mqttClient->ConnectTo(
-                mqttConfiguration.host, mqttConfiguration.port, mqttConfiguration.useTLS,
-                mqttConfiguration.cleanSession, mqttConfiguration.keepAlive, userName.c_str(),
-                &password, &willMsg, mqttConfiguration.qos, mqttConfiguration.willRetain,
-                mqttConfiguration.props);
+                "broker.test", mqttConfiguration.host, mqttConfiguration.port,
+                mqttConfiguration.useTLS, mqttConfiguration.cleanSession,
+                mqttConfiguration.keepAlive, userName.c_str(), &password, &willMsg,
+                mqttConfiguration.qos, mqttConfiguration.willRetain, mqttConfiguration.props);
             if (!transaction)
             {
                 diagnosticsMessageDelegate(
@@ -536,7 +539,7 @@ namespace
         }
 
         void Ping() {
-            auto transaction = mqttClient->Ping(mqttConfiguration.host, mqttConfiguration.port);
+            auto transaction = mqttClient->Ping("broker.test");
             if (!transaction)
             {
                 diagnosticsMessageDelegate(
@@ -582,10 +585,11 @@ namespace
         }
 
         void HandleSubscribeCommand(EndPointCommande cmd) {
-            auto transcation =
-                mqttClient->Subscribe(cmd.topic.c_str(), cmd.retainHandling, cmd.withAutoFeadBack,
-                                      cmd.qos, cmd.retainAsPublished, mqttConfiguration.props);
-            if (!transcation)
+            auto transaction = mqttClient->Subscribe(
+                "broker.test", cmd.topic.c_str(), cmd.retainHandling, cmd.withAutoFeadBack, cmd.qos,
+                cmd.retainAsPublished, mqttConfiguration.props);
+
+            if (!transaction)
             {
                 std::lock_guard<std::mutex> g(mutex);
                 auto it = mqttPoints.find(cmd.sessionId);
@@ -601,7 +605,7 @@ namespace
                 return;
             }
 
-            transcation->SetCompletionDelegate(
+            transaction->SetCompletionDelegate(
                 [this, cmd](std::vector<MqttV5::ReasonCode>& reasons)
                 {
                     std::lock_guard<std::mutex> g(mutex);
@@ -618,6 +622,27 @@ namespace
                     resp.Set("Status", ok ? "Success" : "Error");
                     it->second->ws->SendText(resp.ToEncoding());
                 });
+
+            if (transaction->transactionState ==
+                MqttV5::IMqttV5Client::Transaction::State::WaitingForResult)
+            {
+                if (transaction->AwaitCompletion(
+                        std::chrono::milliseconds(mqttConfiguration.connectTimeOut)))
+                {
+                    switch (transaction->transactionState)
+                    {
+                    case MqttV5::IMqttV5Client::Transaction::State::Success:
+                        diagnosticsMessageDelegate("MqttClientPlugin", 3,
+                                                   "Subscruption response occured Successfully.");
+                        break;
+                    case MqttV5::IMqttV5Client::Transaction::State::ShunkedPacket:
+                        diagnosticsMessageDelegate("MqttClientPlugin", 2, "ShunkedPacket.");
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
         }
 
         void HandleUnSubscribeCommand(EndPointCommande cmd) {
