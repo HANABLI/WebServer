@@ -37,8 +37,7 @@ namespace FalcataIoTServer
 
         bool IsReachable();
         void SetReachable(bool state);
-        void SetDiagnosticsMessageDelegate(SystemUtils::DiagnosticsSender::Levels,
-                                           std::string& msg);
+        void SetDiagnosticsMessageDelegate(SystemUtils::DiagnosticsSender::Levels, std::string msg);
         // Server
         std::shared_ptr<MqttV5::MqttClient::Transaction> Start() override;
         std::shared_ptr<MqttV5::MqttClient::Transaction> Stop() override;

@@ -37,7 +37,7 @@ namespace FalcataIoTServer
         MqttV5::Properties* props = nullptr;
 
         MqttV5::WillMessage MakeWillMessage() {
-            MqttV5::DynamicBinaryData will;
+            MqttV5::Common::DynamicBinaryData will;
             Utf8::Utf8 utf;
             if (!willPayload.empty())
             {
@@ -51,8 +51,8 @@ namespace FalcataIoTServer
             return willMsg;
         }
 
-        MqttV5::DynamicBinaryData MakePassword() {
-            MqttV5::DynamicBinaryData binaryPassword;
+        MqttV5::Common::DynamicBinaryData MakePassword() {
+            MqttV5::Common::DynamicBinaryData binaryPassword;
             Utf8::Utf8 utf;
             if (!password.empty())
             {
@@ -126,7 +126,7 @@ namespace FalcataIoTServer
             if (broker_->diagnosticsMessageDelegate)
             {
                 SetDiagnosticsMessageDelegate(SystemUtils::DiagnosticsSender::Levels::ERROR,
-                                              std::string("Client is not properly mobilized!"));
+                                              "Client is not properly mobilized!");
             }
             return nullptr;
         }
@@ -140,7 +140,7 @@ namespace FalcataIoTServer
         {
             SetDiagnosticsMessageDelegate(
                 SystemUtils::DiagnosticsSender::Levels::ERROR,
-                std::string("ConnectTo() return null. Check transport/timekeeper/mobilize."));
+                "ConnectTo() return null. Check transport/timekeeper/mobilize.");
 
             return nullptr;
         }
@@ -153,8 +153,7 @@ namespace FalcataIoTServer
                 SetDiagnosticsMessageDelegate(
                     ok ? SystemUtils::DiagnosticsSender::Levels::INFO
                        : SystemUtils::DiagnosticsSender::Levels::ERROR,
-                    ok ? std::string("Mqtt client connected to the broker.")
-                       : std::string("Mqtt client connection failed"));
+                    ok ? "Mqtt client connected to the broker." : "Mqtt client connection failed");
 
                 // TODO Create an event object to the DB.
                 // TODO Update Enabled
@@ -164,11 +163,11 @@ namespace FalcataIoTServer
     std::shared_ptr<MqttV5::MqttClient::Transaction> MqttBroker::Stop() { return nullptr; }
 
     void MqttBroker::SetDiagnosticsMessageDelegate(SystemUtils::DiagnosticsSender::Levels level,
-                                                   std::string& msg) {
+                                                   std::string msg) {
         if (broker_->diagnosticsMessageDelegate)
         {
-            broker_->diagnosticsMessageDelegate(StringUtils::sprintf("Broker #%s", Uuid_s()), level,
-                                                msg);
+            broker_->diagnosticsMessageDelegate(
+                StringUtils::sprintf("Broker #%s", Uuid_s().c_str()), level, msg);
         }
     }
 
@@ -216,9 +215,9 @@ namespace FalcataIoTServer
             broker_->useTLS = (bool)json["useTLS"];
 
         if (json.Has("mqtt_userName"))
-            broker_->userName = json["mqtt_userName"];
+            broker_->userName = (std::string)json["mqtt_userName"];
         if (json.Has("mqtt_password"))
-            broker_->password = json["mqtt_password"];
+            broker_->password = (std::string)json["mqtt_password"];
 
         // Prefer metadata
         Json::Value md;

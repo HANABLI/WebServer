@@ -7,6 +7,7 @@
 #pragma once
 
 #include <Models/Core/IDevice.hpp>
+#include <Models/Core/IJsonSerialisable.hpp>
 #include <Json/Json.hpp>
 
 #include <memory>
