@@ -47,7 +47,7 @@ namespace FalcataIoTServer
         }
 
         void LoadTopics() {
-            auto& rows = topicRepo.FindAll();
+            auto rows = topicRepo.FindAll();
             std::unordered_map<std::string, std::vector<std::shared_ptr<MqttTopic>>> byDevice;
 
             for (auto& up : rows)
@@ -162,9 +162,9 @@ namespace FalcataIoTServer
         MqttV5::Properties* properties) {
         auto broker = std::dynamic_pointer_cast<MqttBroker>(impl_->registry.GetServer(serverId));
         if (!broker)
-            return false;
+            return nullptr;
         if (!impl_->client || broker->IsReachable())
-        { return false; }
+        { return nullptr; }
 
         auto t = impl_->client->Publish(serverId, topic, payload, retain, qos, packetID, nullptr);
 

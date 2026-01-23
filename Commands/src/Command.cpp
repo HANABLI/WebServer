@@ -32,11 +32,29 @@ namespace FalcataIoTServer
     Command::~Command() noexcept = default;
 
     const std::string& Command::GetCommand() const { return impl_->command; }
-    void Command::SetCommand(std::string& cmd) { impl_->command = cmd; }
+    void Command::SetCommand(const std::string& cmd) { impl_->command = cmd; }
     const std::string& Command::GetDeviceId() const { return impl_->deviceId; }
-    void Command::SetDeviceId(std::string& dev) { impl_->deviceId = dev; }
+    void Command::SetDeviceId(const std::string& dev) { impl_->deviceId = dev; }
     const Json::Value& Command::GetParams() const { return impl_->params; }
-    void Command::SetParams(Json::Value& params) { impl_->params = params; }
+    void Command::SetParams(Json::Value params) { impl_->params = params; }
+
+    const std::string& Command::GetCreatedAt() const { return impl_->createdAt; }
+    void Command::SetCreatedAt(const std::string& time) { impl_->createdAt = time; }
+    const std::string& Command::GetUpdatedAt() const { return impl_->updatedAt; }
+    void Command::SetUpdatedAt(const std::string& time) { impl_->updatedAt = time; }
+    const std::string& Command::GetSentAt() const { return impl_->sentAt; }
+    void Command::SetSentAt(const std::string& time) { impl_->sentAt = time; }
+    const std::string& Command::GetAckAt() const { return impl_->ackAt; }
+    void Command::SetAckAt(const std::string& time) { impl_->ackAt = time; }
+    const std::string& Command::GetStatus() const { return impl_->status; }
+    void Command::SetStatus(const std::string& status) { impl_->status = status; }
+    const std::string& Command::GetError() const { return impl_->error; }
+    void Command::SetError(const std::string& error) { impl_->error = error; }
+
+    const int Command::GetAttempts() const { return impl_->attempts; }
+    void Command::SetAttempts(int attempts) { impl_->attempts = attempts; }
+    const std::string& Command::GetNextRetryAt() const { return impl_->nextRetryAt; }
+    void Command::SetNextRetryAt(const std::string& nextRetry) { impl_->nextRetryAt = nextRetry; }
 
     Json::Value Command::ToJson() const {
         Json::Value command(Json::Value::Type::Object);
@@ -59,27 +77,27 @@ namespace FalcataIoTServer
         if (j.Has("id"))
         { UuidFromString(j["id"]); }
         if (j.Has("deviceId"))
-        { impl_->deviceId = j["deviceId"]; }
+        { SetDeviceId(j["deviceId"]); }
         if (j.Has("createdAt"))
-        { impl_->createdAt = j["createdAt"]; }
+        { SetCreatedAt(j["createdAt"]); }
         if (j.Has("updatedAt"))
-        { impl_->createdAt = j["updatedAt"]; }
+        { SetUpdatedAt(j["updatedAt"]); }
         if (j.Has("sentAt"))
-        { impl_->sentAt = j["sentAt"]; }
+        { SetSentAt(j["sentAt"]); }
         if (j.Has("ackAt"))
-        { impl_->ackAt = j["ackAt"]; }
+        { SetAckAt(j["ackAt"]); }
         if (j.Has("command"))
-        { impl_->command = j["command"]; }
+        { SetCommand(j["command"]); }
         if (j.Has("params"))
-        { impl_->params = j["params"]; }
+        { SetParams(j["params"]); }
         if (j.Has("status"))
-        { impl_->status = j["status"]; }
+        { SetStatus(j["status"]); }
         if (j.Has("error"))
-        { impl_->error = j["error"]; }
+        { SetError(j["error"]); }
         if (j.Has("attempts"))
-        { impl_->attempts = static_cast<int>(j["attempts"]); }
+        { SetAttempts(static_cast<int>(j["attempts"])); }
         if (j.Has("nextRetryAt"))
-        { impl_->nextRetryAt = j["nextRetryAt"]; }
+        { SetNextRetryAt(j["nextRetryAt"]); }
     }
 
 }  // namespace FalcataIoTServer

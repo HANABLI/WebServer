@@ -66,7 +66,7 @@ namespace FalcataIoTServer
                     case MqttV5::IMqttV5Client::Transaction::State::Success:
                         impl_->broker->SetDiagnosticsMessageDelegate(
                             SystemUtils::DiagnosticsSender::Levels::INFO,
-                            StringUtils::sprintf("Subscribed topic : %s.", tp->GetTopic()));
+                            StringUtils::sprintf("Subscribed topic : %s.", tp->GetTopic().c_str()));
                         // serverRepo.Update(broker);
 
                         // TODO create event

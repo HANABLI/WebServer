@@ -25,11 +25,28 @@ namespace FalcataIoTServer
         explicit Command();
 
         const std::string& GetCommand() const;
-        void SetCommand(std::string& cmd);
+        void SetCommand(const std::string& cmd);
         const std::string& GetDeviceId() const;
-        void SetDeviceId(std::string& dev);
+        void SetDeviceId(const std::string& dev);
         const Json::Value& GetParams() const;
-        void SetParams(Json::Value& params);
+        void SetParams(Json::Value params);
+        const std::string& GetCreatedAt() const;
+        void SetCreatedAt(const std::string& time);
+        const std::string& GetUpdatedAt() const;
+        void SetUpdatedAt(const std::string& time);
+        const std::string& GetSentAt() const;
+        void SetSentAt(const std::string& time);
+        const std::string& GetAckAt() const;
+        void SetAckAt(const std::string& time);
+        const std::string& GetStatus() const;
+        void SetStatus(const std::string& status);
+        const std::string& GetError() const;
+        void SetError(const std::string& error);
+
+        const int GetAttempts() const;
+        void SetAttempts(int attempts);
+        const std::string& GetNextRetryAt() const;
+        void SetNextRetryAt(const std::string& nextRetry);
 
         /**
          * Serialize object to JSON
