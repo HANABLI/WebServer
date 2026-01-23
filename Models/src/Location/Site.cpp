@@ -102,15 +102,15 @@ namespace FalcataIoTServer
         if (j.Has("id"))
             UuidFromString(j["id"]);
         if (j.Has("name"))
-            impl_->name = j["name"];
+            SetName(j["name"]);
         if (j.Has("kind"))
-            impl_->kind = j["kind"];
+            SetKind(j["kind"]);
         if (j.Has("description"))
-            impl_->description = j["description"];
+            SetDescription(j["description"]);
         if (j.Has("country"))
-            impl_->country = j["country"];
+            SetCountry(j["country"]);
         if (j.Has("timezone"))
-            impl_->timezone = j["timezone"];
+            SetTimezone(j["timezone"]);
         if (j.Has("tags") && (j["tags"].GetType() == Json::Value::Type::Array))
         {
             impl_->tags.clear();
@@ -119,18 +119,18 @@ namespace FalcataIoTServer
         }
 
         if (j.Has("metadata"))
-            impl_->metadata = j["metadata"];
+            SetMetadata(j["metadata"]);
         if (j.Has("created_at"))
-            impl_->createdAt = j["created_at"];
+            SetCreatedAt(j["created_at"]);
         if (j.Has("updated_at"))
-            impl_->updatedAt = j["updated_at"];
+            SetUpdatedAt(j["updated_at"]);
 
         // transient
         if (j.Has("zone_ids") && (j["zone_ids"].GetType() == Json::Value::Type::Array))
         {
             impl_->zoneIds.clear();
             for (size_t i = 0; i < j["zone_ids"].GetSize(); ++i)
-                impl_->zoneIds.push_back(j["zone_ids"][i].ToEncoding());
+                impl_->zoneIds.push_back(j["zone_ids"][i]);
         }
     }
 

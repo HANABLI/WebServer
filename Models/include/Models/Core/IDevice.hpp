@@ -23,10 +23,11 @@ namespace FalcataIoTServer
 
         // "kind" = catégorie fonctionnelle (server, sensor, gateway, etc.)
         virtual const std::string GetKind() const = 0;
+        virtual void SetKind(const std::string& kind) = 0;
 
         // "protocol" = mqtt, opcua, modbus-tcp…
         virtual const std::string GetProtocol() const = 0;
-
+        virtual void SetProtocol(const std::string& protocol) = 0;
         // Actif / inactif
         virtual bool IsEnabled() const = 0;
         virtual void SetEnabled(bool enabled) = 0;

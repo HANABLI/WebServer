@@ -29,16 +29,19 @@ namespace FalcataIoTServer
 
         // "kind" = catégorie fonctionnelle (server, sensor, gateway, etc.)
         const std::string GetKind() const override { return self().impl_->kind; }
+        void SetKind(const std::string& kind) override { self().impl_->kind = kind; }
 
         // "protocol" = mqtt, opcua, modbus-tcp…
         const std::string GetProtocol() const override { return self().impl_->protocol; }
-
+        void SetProtocol(const std::string& protocol) override {
+            self().impl_->protocol = protocol;
+        }
         // Actif / inactif
         bool IsEnabled() const override { return self().impl_->enabled; }
         void SetEnabled(bool enabled) override { self().impl_->enabled = enabled; }
 
         // Sérialisation JSON pour ton API REST
-        Json::Value ToJson() const override {
+        virtual Json::Value ToJson() const override {
             const auto& impl = self().impl_;
             Json::Value device(Json::Value::Type::Object);
             device.Set("id", self().Uuid_s());
@@ -50,19 +53,19 @@ namespace FalcataIoTServer
             return device;
         }
 
-        void FromJson(const Json::Value& json) override {
+        virtual void FromJson(const Json::Value& json) override {
             auto& impl = self().impl_;
 
             if (json.Has("id"))
-            { self().UuidFromString(json["id"].ToEncoding()); }
+            { SetId(json["id"]); }
             if (json.Has("name"))
-            { impl->name = json["name"]; }
+            { SetName(json["name"]); }
             if (json.Has("kind"))
-            { impl->kind = json["kind"]; }
+            { SetKind(json["kind"]); }
             if (json.Has("protocol"))
-            { impl->protocol = json["protocol"]; }
+            { SetProtocol(json["protocol"]); }
             if (json.Has("enabled"))
-            { impl->enabled = json["enabled"]; }
+            { SetEnabled(json["enabled"]); }
         }
 
     protected:

@@ -70,25 +70,25 @@ namespace FalcataIoTServer
 
     void Event::FromJson(const Json::Value& j) {
         if (j.Has("id"))
-            UuidFromString(j["id"].ToEncoding());
+            UuidFromString(j["id"]);
         if (j.Has("ts"))
-            impl_->ts = j["ts"];
+            Ts(j["ts"]);
         if (j.Has("source"))
-            impl_->source = j["source"];
+            Source(j["source"]);
         if (j.Has("type"))
-            impl_->type = j["type"];
+            Type(j["type"]);
         if (j.Has("severity"))
-            impl_->severity = j["severity"];
+            Severity(j["severity"]);
         if (j.Has("site_id"))
-            impl_->siteId = j["site_id"];
+            SiteId(j["site_id"]);
         if (j.Has("zone_id"))
-            impl_->zoneId = j["zone_id"];
+            ZoneId(j["zone_id"]);
         if (j.Has("device_id"))
-            impl_->deviceId = j["device_id"];
+            DeviceId(j["device_id"]);
         if (j.Has("correlation_id"))
-            impl_->correlationId = j["correlation_id"];
+            CorrelationId(j["correlation_id"]);
         if (j.Has("payload"))
-            impl_->payload = j["payload"];
+            Payload(j["payload"]);
     }
 
     const std::vector<std::string> Event::GetInsertParams() const { return {""}; }

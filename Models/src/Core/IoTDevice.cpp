@@ -69,18 +69,18 @@ namespace FalcataIoTServer
         Device<IoTDevice>::FromJson(j);
 
         if (j.Has("site_id"))
-            impl_->siteId = j["site_id"];
+            SetSiteId(j["site_id"]);
         if (j.Has("zone_id"))
-            impl_->zoneId = j["zone_id"];
+            SetZone(j["zone_id"]);
         if (j.Has("type_id"))
-            impl_->typeId = j["type_id"];
+            SetTypeId(j["type_id"]);
         if (j.Has("server_id"))
-            impl_->serverId = j["server_id"];
+            SetServerId(j["server_id"]);
 
         if (j.Has("external_id"))
-            impl_->externalId = j["external_id"];
+            SetExternalId(j["external_id"]);
         if (j.Has("last_seen_at"))
-            impl_->lastSeenAt = j["last_seen_at"];
+            SetLastSeenAt(j["last_seen_at"]);
 
         if (j.Has("tags") && (j["tags"].GetType() == Json::Value::Type::Array))
         {
@@ -90,11 +90,11 @@ namespace FalcataIoTServer
         }
 
         if (j.Has("metadata"))
-            impl_->metadata = j["metadata"];
+            SetMetadata(j["metadata"]);
         if (j.Has("created_at"))
-            impl_->createdAt = j["created_at"];
+            SetCreatedAt(j["created_at"]);
         if (j.Has("updated_at"))
-            impl_->updatedAt = j["updated_at"];
+            SetUpdatedAt(j["updated_at"]);
 
         if (j.Has("event_ids") && (j["event_ids"].GetType() == Json::Value::Type::Array))
         {

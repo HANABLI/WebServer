@@ -97,29 +97,28 @@ namespace FalcataIoTServer
         if (j.Has("id"))
             UuidFromString(j["id"].ToEncoding());
         if (j.Has("site_id"))
-            impl_->siteId = j["site_id"];
+            SetSiteId(j["site_id"]);
         if (j.Has("name"))
-            impl_->name = j["name"];
+            SetName(j["name"]);
         if (j.Has("description"))
-            impl_->description = j["description"];
+            SetDescription(j["description"]);
         if (j.Has("kind"))
-            impl_->kind = j["kind"];
+            SetKind(j["kind"]);
         if (j.Has("geojson"))
-            impl_->geojson = j["geojson"];
+            SetGeoJson(j["geojson"]);
 
         if (j.Has("tags") && (j["tags"].GetType() == Json::Value::Type::Array))
         {
             impl_->tags.clear();
-            for (size_t i = 0; i < j["tags"].GetSize(); ++i)
-                impl_->tags.push_back(j["tags"][i].ToEncoding());
+            for (size_t i = 0; i < j["tags"].GetSize(); ++i) impl_->tags.push_back(j["tags"][i]);
         }
 
         if (j.Has("metadata"))
-            impl_->metadata = j["metadata"];
+            SetMetadata(j["metadata"]);
         if (j.Has("created_at"))
-            impl_->createdAt = j["created_at"];
+            SetCreatedAt(j["created_at"]);
         if (j.Has("updated_at"))
-            impl_->updatedAt = j["updated_at"];
+            SetUpdatedAt(j["updated_at"]);
 
         // transient
 
@@ -127,7 +126,7 @@ namespace FalcataIoTServer
         {
             impl_->deviceIds.clear();
             for (size_t i = 0; i < j["device_ids"].GetSize(); ++i)
-                impl_->deviceIds.push_back(j["device_ids"][i].ToEncoding());
+                impl_->deviceIds.push_back(j["device_ids"][i]);
         }
     }
 

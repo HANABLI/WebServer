@@ -13,7 +13,8 @@ namespace FalcataIoTServer
         SystemUtils::DiagnosticsSender diagnosticsSender;
 
         Core(UuidV7::UuidV7 uuid) :
-            diagnosticsSender(StringUtils::sprintf("Postgresql::CoreObject #%s", uuid.ToString())),
+            diagnosticsSender(
+                StringUtils::sprintf("Postgresql::CoreObject #%s", uuid.ToString().c_str())),
             uuid(std::move(uuid)) {}
         ~Core() noexcept = default;
     };

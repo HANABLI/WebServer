@@ -64,15 +64,15 @@ namespace FalcataIoTServer
         Device<Server>::FromJson(j);
 
         if (j.Has("host"))
-            impl_->host = j["host"];
+            SetHost(j["host"]);
         if (j.Has("port"))
-            impl_->port = (uint16_t)(int)j["port"];
+            SetPort((uint16_t)(int)j["port"]);
 
         // accept both snake_case + legacy
         if (j.Has("use_tls"))
-            impl_->useTls = (bool)j["use_tls"];
+            SetUseTls((bool)j["use_tls"]);
         if (j.Has("useTLS"))
-            impl_->useTls = (bool)j["useTLS"];
+            SetUseTls((bool)j["useTLS"]);
 
         if (j.Has("tags") && (j["tags"].GetType() == Json::Value::Type::Array))
         {
@@ -81,11 +81,11 @@ namespace FalcataIoTServer
         }
 
         if (j.Has("metadata"))
-            impl_->metadata = j["metadata"];
+            SetMetadata(j["metadata"]);
         if (j.Has("created_at"))
-            impl_->createdAt = j["created_at"];
+            SetCreatedAt(j["created_at"]);
         if (j.Has("updated_at"))
-            impl_->updatedAt = j["updated_at"];
+            SetUpdatedAt(j["updated_at"]);
     }
 
     Json::Value Server::ToJson() const {

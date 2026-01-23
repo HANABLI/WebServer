@@ -66,9 +66,9 @@ namespace FalcataIoTServer
         const std::vector<std::string> GetDisableParams() const override;
 
         // Sérialisation générique d’un "Server"
-        Json::Value ToJson() const override;
+        virtual Json::Value ToJson() const override;
 
-        void FromJson(const Json::Value& json) override;
+        virtual void FromJson(const Json::Value& json) override;
 
         // Méthode pure virtuelle pour forcer les dérivés à s’identifier
         // (par ex: "mqtt-broker", "opcua-server"…)

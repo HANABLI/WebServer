@@ -104,29 +104,29 @@ namespace FalcataIoTServer
             UuidFromString(impl_->id);
         }
         if (j.Has("device_id"))
-            impl_->deviceId = j["device_id"];
+            SetDeviceId(j["device_id"]);
         if (j.Has("role"))
-            impl_->role = j["role"];
+            SetRole(j["role"]);
         if (j.Has("topic"))
-            impl_->topic = j["topic"];
+            SetTopic(j["topic"]);
         if (j.Has("qos"))
-            impl_->qos = static_cast<MqttV5::QoSDelivery>(static_cast<int>(j["qos"]));
+            SetQoS(static_cast<MqttV5::QoSDelivery>(static_cast<int>(j["qos"])));
         if (j.Has("retain"))
-            impl_->retain = static_cast<MqttV5::RetainHandling>(static_cast<int>(j["retain"]));
+            SetRetain(static_cast<MqttV5::RetainHandling>(static_cast<int>(j["retain"])));
         if (j.Has("retain_as_published"))
-            impl_->retainAsPublished = j["retain_as_published"];
+            SetRetainAsPublished(j["retain_as_published"]);
         if (j.Has("auto_feedback"))
-            impl_->autoFeedBack = j["auto_feedback"];
+            SetWithAutoFeedBAck(j["auto_feedback"]);
         if (j.Has("direction"))
-            impl_->direction = j["direction"];
+            SetDirection(j["direction"]);
         if (j.Has("enabled"))
-            impl_->enabled = (bool)j["enabled"];
+            SetEnabled((bool)j["enabled"]);
         if (j.Has("metadata"))
-            impl_->metadata = j["metadata"];
+            SetMetaData(j["metadata"]);
         if (j.Has("created_at"))
-            impl_->createdAt = j["created_at"];
+            SetCreatedAt(j["created_at"]);
         if (j.Has("updated_at"))
-            impl_->updatedAt = j["updated_at"];
+            SetUpdatedAt(j["updated_at"]);
     }
 
     const std::vector<std::string> MqttTopic::GetInsertParams() const { return {""}; }
