@@ -8,7 +8,7 @@ namespace FalcataIoTServer
     }
     Server::Server(std::string id, std::string name, std::string host, uint16_t port,
                    std::string protocol, bool enabled) :
-        CoreObject(std::move(id)), impl_(std::make_unique<Impl>()) {
+        CoreObject(id), impl_(std::make_unique<Impl>()) {
         impl_->name = name;
         impl_->host = host;
         impl_->port = port;
