@@ -75,7 +75,7 @@ namespace FalcataIoTServer
                         impl_->broker->SetDiagnosticsMessageDelegate(
                             SystemUtils::DiagnosticsSender::Levels::WARNING,
                             StringUtils::sprintf("Topic subscription error : %s .",
-                                                 tp->GetTopic()));
+                                                 tp->GetTopic().c_str()));
                         // serverRepo.Update(broker);
                         // TODO create event
                         break;
