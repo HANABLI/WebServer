@@ -178,7 +178,7 @@ namespace FalcataIoTServer
         if (json.Has("site_roles"))
         {
             auto j = json["site_roles"];
-            for (auto& i = j.begin(); i != j.end(); ++i)
+            for (auto i = j.begin(); i != j.end(); ++i)
             { SetSiteRole(i.key(), i.value()); }
         }
     }
@@ -200,10 +200,8 @@ namespace FalcataIoTServer
         if (j.ToEncoding() != "{}" && j.ToEncoding() != "null")
         {
             for (auto i = j.begin(); i != j.end(); ++i)
-            {
-                u->SetSiteRole(i.key(), i.value());
-            }
-        } 
+            { u->SetSiteRole(i.key(), i.value()); }
+        }
         return u;
     }
 

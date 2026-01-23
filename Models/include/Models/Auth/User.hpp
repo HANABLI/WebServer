@@ -13,7 +13,7 @@ namespace FalcataIoTServer
     class User : public CoreObject, public IJsonSerializable
     {
     public:
-        ~User();
+        ~User() noexcept;
         User(const User&) = delete;
         User(User&&) noexcept = default;
         User& operator=(const User&) = delete;

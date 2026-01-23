@@ -8,24 +8,24 @@ namespace FalcataIoTServer
     }
     IoTDevice::IoTDevice(std::string id, std::string serverId, std::string name, std::string kind,
                          std::string protocol, bool enabled, std::string zoneId) :
-        CoreObject(std::move(id)), impl_(std::make_unique<Impl>()) {
+        CoreObject(id), impl_(std::make_unique<Impl>()) {
         SetId(id);
-        impl_->serverId = std::move(serverId);
-        impl_->name = std::move(name);
-        impl_->kind = std::move(kind);
-        impl_->protocol = std::move(protocol);
+        impl_->serverId = serverId;
+        impl_->name = name;
+        impl_->kind = kind;
+        impl_->protocol = protocol;
         impl_->enabled = enabled;
-        impl_->zoneId = std::move(zoneId);
+        impl_->zoneId = zoneId;
     }
 
     IoTDevice::IoTDevice(std::string name, std::string kind, std::string protocol, bool enabled,
                          std::string zoneId) :
         CoreObject(), impl_(std::make_unique<Impl>()) {
-        impl_->name = std::move(name);
-        impl_->kind = std::move(kind);
-        impl_->protocol = std::move(protocol);
+        impl_->name = name;
+        impl_->kind = kind;
+        impl_->protocol = protocol;
         impl_->enabled = enabled;
-        impl_->zoneId = std::move(zoneId);
+        impl_->zoneId = zoneId;
     }
 
     const std::string IoTDevice::GetServerId() const { return impl_->serverId; }
