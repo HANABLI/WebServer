@@ -41,7 +41,7 @@ namespace FalcataIoTServer
         void SetEnabled(bool enabled) override { self().impl_->enabled = enabled; }
 
         // Sérialisation JSON pour ton API REST
-        virtual Json::Value ToJson() const {
+        virtual Json::Value ToJson() const override {
             const auto& impl = self().impl_;
             Json::Value device(Json::Value::Type::Object);
             device.Set("id", self().Uuid_s());
@@ -53,7 +53,7 @@ namespace FalcataIoTServer
             return device;
         }
 
-        virtual void FromJson(const Json::Value& json) {
+        virtual void FromJson(const Json::Value& json) override {
             auto& impl = self().impl_;
 
             if (json.Has("id"))
