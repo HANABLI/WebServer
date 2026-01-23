@@ -5,6 +5,8 @@
  */
 
 #include <Commands/CommandDispatcher.hpp>
+#include <atomic>
+#include <thread>
 
 namespace FalcataIoTServer
 {

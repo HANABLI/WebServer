@@ -10,9 +10,9 @@ namespace FalcataIoTServer
         std::string jwtSecret, jwtIss, jwtAud;
 
         Impl(Json::Value cfg) : cfg(cfg) {
-            jwtAud = cfg.Has("JwtAud") ? cfg["JwtAud"] : "";
-            jwtIss = cfg.Has("JwtIss") ? cfg["JwtIss"] : "";
-            jwtSecret = cfg.Has("JwtSecret") ? cfg["JwtSecret"] : "";
+            jwtAud = cfg.Has("JwtAud") ? (std::string)cfg["JwtAud"] : "";
+            jwtIss = cfg.Has("JwtIss") ? (std::string)cfg["JwtIss"] : "";
+            jwtSecret = cfg.Has("JwtSecret") ? (std::string)cfg["JwtSecret"] : "";
         };
         ~Impl() noexcept = default;
     };
@@ -37,10 +37,12 @@ namespace FalcataIoTServer
                 Auth::VerifyHs256(token, impl_->jwtSecret, impl_->jwtIss, impl_->jwtAud);
             Auth::Identity id;
             id.claims = verified.payload;
-            id.sub = verified.payload.Has("sub") ? verified.payload["sub"] : "";
-            id.tenant_slug =
-                verified.payload.Has("tenant_slug") ? verified.payload["tenant_slug"] : "";
-            id.tenant_id = verified.payload.Has("tenant_id") ? verified.payload["tenant_id"] : "";
+            id.sub = verified.payload.Has("sub") ? (std::string)verified.payload["sub"] : "";
+            id.tenant_slug = verified.payload.Has("tenant_slug")
+                                 ? (std::string)verified.payload["tenant_slug"]
+                                 : "";
+            id.tenant_id =
+                verified.payload.Has("tenant_id") ? (std::string)verified.payload["tenant_id"] : "";
             id.role = verified.payload.Has("role") ? Auth::ParseRole(verified.payload["role"])
                                                    : Auth::Role::Viewer;
             if (verified.payload.Has("site_ids") &&

@@ -1,4 +1,3 @@
-#pragma once
 /**
  * @file Command.cpp
  * @brief This represent the implementation of the FalcataIoTServer::Command class.

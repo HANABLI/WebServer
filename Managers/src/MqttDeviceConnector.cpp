@@ -1,4 +1,3 @@
-#pragma once
 /**
  * @file MqttDeviceConnector.cpp
  * @brief This represent the implementation of the FalcataIoTServer::MqttDeviceConnector class.
