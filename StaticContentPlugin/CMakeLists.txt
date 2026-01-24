@@ -23,5 +23,6 @@ target_link_libraries(${This} PUBLIC
     SystemUtils
     StringUtils
 )
-
-add_subdirectory(test)
+if(WIN32)
+    add_subdirectory(test)
+endif()
