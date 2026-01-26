@@ -14,10 +14,10 @@ set(Headers
     include/Repositories/ZoneRepo.hpp
     include/Repositories/IotDevicesRepo.hpp
     include/Repositories/MqttTopicRepo.hpp
-
 )
 
 set(Sources
+    src/GenericRepo.cpp
 )
 
 add_library(${this} STATIC ${Headers} ${Sources})
