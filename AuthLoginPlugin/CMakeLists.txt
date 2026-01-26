@@ -12,7 +12,11 @@ set(Sources
 add_library(${This} SHARED ${Sources})
 
 set_target_properties(${This} PROPERTIES FOLDER "Web Server Plugins")
-
+if(MSVC)
+    target_compile_options(${This} PRIVATE /EHsc)
+else()
+    target_compile_options(${This} PRIVATE -fexceptions)
+endif()
 target_include_directories(${This} PRIVATE $<TARGET_PROPERTY:WebServer,INCLUDE_DIRECTORIES> include)
 
 target_link_libraries(
