@@ -18,6 +18,12 @@ add_library(${This} STATIC ${Headers} ${Sources})
 
 set_target_properties(${This} PROPERTIES FOLDER Libraries)
 
+if(MSVC)
+    target_compile_options(${This} PRIVATE /EHsc)
+else()
+    target_compile_options(${This} PRIVATE -fexceptions)
+endif()
+
 target_include_directories(${This} PUBLIC include)
 
 target_link_libraries(${This} PUBLIC Auth Json)
