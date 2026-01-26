@@ -40,7 +40,11 @@ else()
   target_include_directories(${this} PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
   target_link_libraries(${this} PUBLIC ${LIBSODIUM_LIBRARIES})
 endif()
-
+if(MSVC)
+    target_compile_options(${This} PRIVATE /EHsc)
+else()
+    target_compile_options(${This} PRIVATE -fexceptions)
+endif()
 
 # find_path(LIBSODIUM_INCLUDE_DIR sodium.h
 #   HINTS

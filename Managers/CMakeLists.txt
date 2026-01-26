@@ -21,7 +21,11 @@ set(Sources
 
 add_library(${this} STATIC ${Headers} ${Sources})
 set_target_properties(${this} PROPERTIES FOLDER Libraries)
-
+if(MSVC)
+    target_compile_options(${This} PRIVATE /EHsc)
+else()
+    target_compile_options(${This} PRIVATE -fexceptions)
+endif()
 target_include_directories(${this} PUBLIC include)
 
 target_link_libraries(${this} PUBLIC
