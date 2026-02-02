@@ -126,7 +126,9 @@ extern "C" API void LoadPlugin(Http::IServer* server, Json::Value configuration,
     authSigninPlugin.diag = diag;
     if (!authSigninPlugin.pg->Connect(authSigninPlugin.pgConninfo))
     {
-        authSigninPlugin.diag("AuthSigninPlugin", 5, "PG connect failed");
+        authSigninPlugin.diag("AuthSigninPlugin", 5,
+                              StringUtils::sprintf("PG connect failed with: %s",
+                                                   authSigninPlugin.pgConninfo.c_str()));
         return;
     }
     authSigninPlugin.users = std::make_unique<FalcataIoTServer::UserManager>(authSigninPlugin.pg);
